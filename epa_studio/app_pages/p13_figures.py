@@ -29,6 +29,16 @@ if not a_emprise:
     st.session_state["site_commune"] = site
 code_dep = departement_reference(t.communes, site)
 
+# Les figures dépendent du site et de l'emprise : on les invalide quand ces entrées changent.
+from epa.projet import emprise_to_geojson  # noqa: E402
+
+empreinte = (site, emprise_to_geojson(emprise) if a_emprise else None)
+if st.session_state.get("fig_empreinte") != empreinte:
+    for k in [k for k in st.session_state if str(k).startswith("res::fig::")]:
+        del st.session_state[k]
+    st.session_state.pop("fig_echecs", None)
+    st.session_state["fig_empreinte"] = empreinte
+
 
 def bloc(cle: str, titre: str, description: str, generer, src: tuple[str, ...], requis: str | None = None):
     from epa import sources as S
@@ -41,9 +51,11 @@ def bloc(cle: str, titre: str, description: str, generer, src: tuple[str, ...], 
         st.divider()
         return
     png = resultat(f"fig::{cle}")
+    echecs = st.session_state.setdefault("fig_echecs", set())
     if png is None:
-        # en démonstration, les données sont en cache : la figure est produite directement
-        if st.session_state.get("mode_demo") or st.button("Générer la figure", key=f"gen_{cle}"):
+        # en démonstration, les données sont en cache : la figure est produite directement (une seule tentative)
+        auto = st.session_state.get("mode_demo") and cle not in echecs
+        if auto or st.button("Générer la figure", key=f"gen_{cle}"):
             with st.spinner("Génération de la figure…"):
                 try:
                     png = generer()
@@ -51,6 +63,7 @@ def bloc(cle: str, titre: str, description: str, generer, src: tuple[str, ...], 
                     st.error(f"Un service de données n'a pas répondu : {e}. Réessayez dans un instant.")
                     png = None
             if png is None:
+                echecs.add(cle)
                 st.warning("La figure n'a pas pu être produite : la donnée nécessaire n'est pas disponible.")
             else:
                 stocker(f"fig::{cle}", png)
@@ -87,7 +100,7 @@ def g_rpg():
 if a_emprise:
     st.session_state["fig_rpg_annees"] = st.multiselect("Millésimes du RPG", sorted(annees_dispo, reverse=True), default=choix, placeholder="Choisir")
     choix = st.session_state["fig_rpg_annees"]
-bloc("rpg_annees", "Cultures déclarées sur le site, année par année", "Parcelles du RPG intersectant l'emprise, sur photographie aérienne.",
+bloc("rpg_" + "_".join(map(str, sorted(choix))), "Cultures déclarées sur le site, année par année", "Parcelles du RPG intersectant l'emprise, sur photographie aérienne.",
      g_rpg, tuple(f"rpg:{a}" for a in sorted(choix)) + ("ortho",),
      None if a_emprise else "Renseignez l'emprise du projet (page Projet et emprise) pour produire cette figure.")
 

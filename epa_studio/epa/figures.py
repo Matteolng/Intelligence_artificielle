@@ -212,7 +212,7 @@ def carte_otex(communes: gpd.GeoDataFrame, df_otex: pd.DataFrame | None, col_cod
     o = df_otex[[col_code, col_otex]].copy()
     o[col_code] = o[col_code].astype(str).str.zfill(5)
     g = communes.to_crs(M).merge(o, left_on="code", right_on=col_code, how="left")
-    g[col_otex] = g[col_otex].fillna("Non diffusé (secret statistique ou absence)")
+    g[col_otex] = g[col_otex].where(g[col_otex].notna(), None).map(lambda v: "Non diffusé (secret statistique ou absence)" if v is None or str(v).strip() in ("", "nan") else str(v))
     ordre = g.assign(_a=g.area).groupby(col_otex)["_a"].sum().sort_values(ascending=False).index.tolist()
     ordre = [x for x in ordre if not x.startswith("Non diffusé")]
     pal = _palette(ordre)

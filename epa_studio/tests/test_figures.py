@@ -46,3 +46,9 @@ def test_otex_sans_fichier():
     assert F.carte_otex(com, None) is None
     png = F.carte_otex(com, pd.DataFrame({"codgeo": ["32001"], "otex": ["Viticulture"]}))
     assert _dpi(png) == 300
+
+
+def test_otex_codes_numeriques():
+    com = _g(code=["32001", "32002"])
+    png = F.carte_otex(com, pd.DataFrame({"codgeo": ["32001"], "otex": [1500.0]}))
+    assert _dpi(png) == 300
