@@ -1,0 +1,6 @@
+# Identité du bureau d'études affichée dans l'application et sur les figures exportées.
+# Modifiable aussi en session depuis la page « Réglages ».
+[bureau]
+nom = "Votre bureau d'études"
+couleur = "#2F6B3A"   # couleur d'accent, format #RRGGBB
+# logo = "logo.png"   # chemin relatif à ce fichier (PNG ou SVG)
