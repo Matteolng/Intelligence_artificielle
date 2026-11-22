@@ -15,8 +15,20 @@ toolbarMode = "minimal"
 gatherUsageStats = false
 
 [theme]
-primaryColor = "#1F5F3F"
-backgroundColor = "#FAFBF9"
-secondaryBackgroundColor = "#EEF3EE"
-textColor = "#1F2A24"
-font = "sans serif"
+# Couleur d'accent par défaut ; la couleur du bureau d'études (branding.toml / page Réglages) est injectée par CSS.
+primaryColor = "#2F6B3A"
+backgroundColor = "#F5F5F7"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1D1D1F"
+linkColor = "#2F6B3A"
+borderColor = "#D2D2D7"
+showWidgetBorder = true
+baseRadius = "10px"
+baseFontSize = 15
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap, sans-serif"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap, sans-serif"
+chartCategoricalColors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F7"

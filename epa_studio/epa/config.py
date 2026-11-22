@@ -18,6 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 CACHE_DIR = Path(os.environ.get("EPA_CACHE_DIR", Path.home() / ".cache" / "epa_studio"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+# Cache livré avec l'application pour la démonstration (lecture seule, données réelles téléchargées par scripts/precharger_demo.py)
+DEMO_CACHE_DIR = Path(os.environ.get("EPA_DEMO_CACHE_DIR", BASE_DIR.parent / "demo_cache"))
 
 # Durée de validité du cache disque (jours) par famille de données
 CACHE_TTL_DAYS = {

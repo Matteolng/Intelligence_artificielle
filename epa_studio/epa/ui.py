@@ -1,70 +1,161 @@
-"""Composants d'interface Streamlit partagés (style, en-têtes, indicateurs, état)."""
+"""Composants d'interface Streamlit partagés : thème en marque blanche, en-têtes, tuiles, sources, états."""
 from __future__ import annotations
 
 import hashlib
+import html
 import json
+import math
 
 import streamlit as st
 
-from .config import APP_NAME, APP_TAGLINE, COLORS
+from .branding import branding_courant
+from .config import APP_NAME
 
-CSS = f"""
+GRIS = {"fond": "#F5F5F7", "surface": "#FFFFFF", "texte": "#1D1D1F", "second": "#6E6E73", "filet": "#D2D2D7",
+        "muet": "#86868B"}
+
+
+def _css(accent: str) -> str:
+    return f"""
 <style>
-:root {{ --epa-green: {COLORS['primary']}; --epa-green-light: {COLORS['primary_light']}; --epa-gold: {COLORS['accent']}; }}
-.block-container {{ padding-top: 3.2rem; padding-bottom: 3rem; max-width: 1400px; }}
-h1, h2, h3 {{ letter-spacing: -0.01em; }}
-.epa-hero {{ background: linear-gradient(120deg, #1F5F3F 0%, #2E7D4F 60%, #6E9E3A 100%); color: #fff; border-radius: 16px;
-            padding: 1.4rem 1.6rem; margin-bottom: 1.2rem; box-shadow: 0 4px 18px rgba(31,95,63,.18); }}
-.epa-hero h1 {{ color:#fff; margin:0 0 .2rem 0; font-size: 1.75rem; }}
-.epa-hero p {{ color: rgba(255,255,255,.92); margin:0; font-size: 1rem; }}
-.epa-step {{ display:inline-block; background: rgba(255,255,255,.18); color:#fff; padding: 2px 10px; border-radius: 999px;
-            font-size: .78rem; margin-bottom: .45rem; font-weight:600; letter-spacing:.02em; }}
-.epa-card {{ background: #fff; border: 1px solid #E3E9E4; border-radius: 14px; padding: 1rem 1.1rem; height: 100%;
-            box-shadow: 0 1px 3px rgba(0,0,0,.04); }}
-.epa-card h4 {{ margin: 0 0 .35rem 0; color: #1F2A24; font-size: 1rem; }}
-.epa-card p {{ margin: 0; color: #5F6B66; font-size: .88rem; }}
-.epa-kpi {{ background:#fff; border:1px solid #E3E9E4; border-left: 5px solid var(--epa-green); border-radius: 12px;
-           padding: .7rem .9rem; }}
-.epa-kpi .v {{ font-size: 1.45rem; font-weight: 700; color: #1F2A24; line-height:1.2; }}
-.epa-kpi .l {{ font-size: .8rem; color: #5F6B66; text-transform: uppercase; letter-spacing: .03em; }}
-.epa-kpi .s {{ font-size: .78rem; color: #5F6B66; margin-top: 2px; }}
-.epa-source {{ font-size: .78rem; color: #5F6B66; border-top: 1px dashed #D5DDD7; margin-top: .4rem; padding-top: .35rem; }}
-.epa-badge {{ display:inline-block; padding: 1px 8px; border-radius: 999px; font-size: .75rem; font-weight:600; }}
-.epa-ok {{ background:#E3F2E7; color:#1F5F3F; }} .epa-warn {{ background:#FFF4D6; color:#8A6100; }} .epa-ko {{ background:#FDE2E0; color:#A3241A; }}
-.epa-text {{ background: var(--epa-green-light); border-radius: 12px; padding: .85rem 1rem; color:#1F2A24; font-size:.95rem; }}
-[data-testid="stSidebar"] {{ background: #F4F7F4; }}
-[data-testid="stMetricValue"] {{ font-size: 1.4rem; }}
+:root {{ --accent: {accent}; --texte: {GRIS['texte']}; --second: {GRIS['second']}; --filet: {GRIS['filet']};
+        --surface: {GRIS['surface']}; --fond: {GRIS['fond']}; --muet: {GRIS['muet']}; }}
+.block-container, [data-testid="stMainBlockContainer"] {{ padding-top: 2.4rem; padding-bottom: 4rem; max-width: 1240px; }}
+h1, h2, h3, h4 {{ color: var(--texte); letter-spacing: -0.015em; }}
+h1 {{ font-weight: 650 !important; }}
+h3, h4 {{ font-weight: 600 !important; }}
+[data-testid="stSidebar"] {{ border-right: 1px solid var(--filet); }}
+[data-testid="stSidebarNav"] a[aria-current="page"] span {{ color: var(--accent); font-weight: 600; }}
+[data-testid="stSidebarNavSeparator"] {{ display: none; }}
+a, .stPageLink a p {{ color: var(--accent); }}
+.stButton button[kind="primary"], .stDownloadButton button[kind="primary"], .stFormSubmitButton button[kind="primary"] {{
+  background: var(--accent); border-color: var(--accent); }}
+.stButton button[kind="primary"]:hover {{ filter: brightness(1.08); border-color: var(--accent); }}
+:focus-visible {{ outline: 2px solid var(--accent) !important; outline-offset: 2px; }}
+
+.epa-head {{ margin: 0 0 1.6rem 0; }}
+.epa-head .etape {{ color: var(--accent); font-size: .9rem; font-weight: 600; margin-bottom: .35rem; }}
+.epa-head h1 {{ font-size: 2.15rem; line-height: 1.15; margin: 0 0 .5rem 0; padding: 0; }}
+.epa-head p {{ color: var(--second); font-size: 1.05rem; line-height: 1.5; margin: 0; max-width: 68ch; }}
+
+.epa-tile {{ background: var(--surface); border-radius: 14px; padding: 1.1rem 1.2rem 1rem; height: 100%;
+            border: 1px solid #E8E8ED; }}
+.epa-tile .l {{ color: var(--second); font-size: .88rem; line-height: 1.3; }}
+.epa-tile .v {{ color: var(--texte); font-size: 2rem; font-weight: 600; line-height: 1.15; margin: .3rem 0 .15rem;
+               font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }}
+.epa-tile .s {{ color: var(--second); font-size: .82rem; }}
+.epa-tile .na {{ color: var(--muet); font-size: 1.05rem; font-weight: 500; }}
+.epa-tile .cmp {{ border-top: 1px solid #E8E8ED; margin-top: .7rem; padding-top: .55rem; display: grid;
+                 grid-template-columns: 1fr auto; row-gap: .2rem; font-size: .84rem; color: var(--second);
+                 font-variant-numeric: tabular-nums; }}
+.epa-tile .cmp b {{ color: var(--texte); font-weight: 500; text-align: right; }}
+
+.epa-source {{ font-size: .78rem; color: var(--second); margin-top: .35rem; }}
+.epa-phrase {{ border-left: 3px solid var(--accent); padding: .15rem 0 .15rem .9rem; margin: .9rem 0 .4rem;
+              color: var(--texte); font-size: 1rem; line-height: 1.55; max-width: 78ch; }}
+.epa-phrase small {{ display: block; color: var(--second); font-size: .78rem; margin-top: .25rem; }}
+.epa-missing {{ background: var(--surface); border: 1px dashed #C7C7CC; border-radius: 12px; padding: .9rem 1rem;
+               color: var(--second); font-size: .9rem; }}
+.epa-missing b {{ color: var(--texte); font-weight: 600; }}
+.epa-card {{ background: var(--surface); border-radius: 14px; padding: 1.1rem 1.2rem; height: 100%; border: 1px solid #E8E8ED; }}
+.epa-card h4 {{ margin: 0 0 .35rem 0; font-size: 1rem; }}
+.epa-card p {{ margin: 0; color: var(--second); font-size: .9rem; line-height: 1.45; }}
+.epa-badge {{ display:inline-block; padding: 1px 8px; border-radius: 6px; font-size: .78rem; font-weight: 600; }}
+.epa-ok {{ background:#E8F3EA; color:#1E5A2B; }} .epa-warn {{ background:#FFF3DC; color:#7A4F00; }}
+.epa-ko {{ background:#FDE7E6; color:#9E2620; }}
+.epa-brand {{ font-weight: 650; font-size: 1.02rem; color: var(--texte); line-height: 1.25; }}
+.epa-brand span {{ display:block; color: var(--second); font-weight: 400; font-size: .8rem; margin-top: .15rem; }}
+[data-testid="stMetricValue"] {{ font-weight: 600; }}
 </style>
 """
 
 
 def setup_page() -> None:
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(_css(branding_courant().couleur), unsafe_allow_html=True)
+
+
+def entete(etape: str | None, titre: str, intro: str = "") -> None:
+    e = f'<div class="etape">{html.escape(etape)}</div>' if etape else ""
+    p = f"<p>{intro}</p>" if intro else ""
+    st.markdown(f'<div class="epa-head">{e}<h1>{html.escape(titre)}</h1>{p}</div>', unsafe_allow_html=True)
 
 
 def hero(titre: str, sous_titre: str, etape: str | None = None) -> None:
-    step = f'<div class="epa-step">{etape}</div>' if etape else ""
-    st.markdown(f'<div class="epa-hero">{step}<h1>{titre}</h1><p>{sous_titre}</p></div>', unsafe_allow_html=True)
+    """Compatibilité : ancien en-tête → nouvel en-tête sobre."""
+    entete(etape, titre, sous_titre)
+
+
+def _ok(v) -> bool:
+    return v is not None and not (isinstance(v, float) and math.isnan(v))
+
+
+def fmt_val(v, unite: str = "", dec: int = 0, signe: bool = False) -> str:
+    """Format français : espace fine insécable pour les milliers, virgule décimale, vrai signe moins."""
+    if not _ok(v):
+        return "non disponible"
+    txt = f"{abs(v):,.{dec}f}".replace(",", "\u202f").replace(".", ",")
+    s = "−" if v < 0 else ("+" if signe and v > 0 else "")
+    return f"{s}{txt}" + (f"\u202f{unite}" if unite else "")
+
+
+def tuile_comparee(libelle: str, valeurs: dict, unite: str = "", dec: int = 1, signe: bool = False, sous: str = "") -> str:
+    """Tuile chiffre clé : la première valeur est la principale, les suivantes sont des références (département, France)."""
+    items = list(valeurs.items())
+    _, v0 = items[0]
+    val = f'<div class="v">{fmt_val(v0, unite, dec, signe)}</div>' if _ok(v0) else '<div class="v na">Non disponible</div>'
+    cmp = "".join(f"<span>{html.escape(k)}</span><b>{fmt_val(v, unite, dec, signe)}</b>" for k, v in items[1:])
+    cmp = f'<div class="cmp">{cmp}</div>' if cmp else ""
+    s = f'<div class="s">{html.escape(sous)}</div>' if sous else ""
+    return f'<div class="epa-tile"><div class="l">{html.escape(libelle)}</div>{val}{s}{cmp}</div>'
+
+
+def tuiles(html_tiles: list[str]) -> None:
+    cols = st.columns(len(html_tiles))
+    for c, t in zip(cols, html_tiles):
+        c.markdown(t, unsafe_allow_html=True)
 
 
 def kpi(label: str, value: str, sub: str = "") -> str:
-    s = f'<div class="s">{sub}</div>' if sub else ""
-    return f'<div class="epa-kpi"><div class="l">{label}</div><div class="v">{value}</div>{s}</div>'
+    s = f'<div class="s">{html.escape(sub)}</div>' if sub else ""
+    return f'<div class="epa-tile"><div class="l">{html.escape(label)}</div><div class="v">{html.escape(str(value))}</div>{s}</div>'
 
 
 def kpis(items: list[tuple[str, str, str]]) -> None:
-    cols = st.columns(len(items))
-    for c, (l, v, s) in zip(cols, items):
-        c.markdown(kpi(l, v, s), unsafe_allow_html=True)
+    tuiles([kpi(l, v, s) for l, v, s in items])
 
 
 def source(txt: str) -> None:
     st.markdown(f'<div class="epa-source">Source : {txt}</div>', unsafe_allow_html=True)
 
 
-def texte_auto(txt: str) -> None:
+def sources(*cles: str) -> None:
+    """Affiche et enregistre (pour la bibliographie) des sources du catalogue."""
+    from . import sources as S
+
+    for c in cles:
+        S.enregistrer(c)
+    source(" ; ".join(S.citer(c) for c in cles) + ".")
+
+
+def phrase(txt: str) -> None:
     if txt:
-        st.markdown(f'<div class="epa-text">📝 <b>Synthèse rédigée automatiquement</b> (à relire)<br>{txt}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="epa-phrase">{txt}<small>Phrase générée à partir des chiffres calculés, à relire.</small></div>',
+                    unsafe_allow_html=True)
+
+
+def texte_auto(txt: str) -> None:
+    phrase(txt)
+
+
+def manquant(quoi: str, source_txt: str, comment: str = "") -> None:
+    c = f"<br>{comment}" if comment else ""
+    st.markdown(f'<div class="epa-missing"><b>{html.escape(quoi)} : donnée non disponible.</b> '
+                f'Source attendue : {html.escape(source_txt)}.{c}</div>', unsafe_allow_html=True)
+
+
+def bouton_png(png: bytes | None, nom: str, label: str = "Télécharger en PNG haute définition") -> None:
+    if png:
+        st.download_button(label, png, f"{nom}.png", "image/png", icon=":material/download:", key=f"png_{nom}")
 
 
 def badge(statut: str) -> str:
@@ -116,8 +207,8 @@ def zone_epcis() -> list[str] | None:
 
 def require_territoire() -> None:
     if territoire() is None:
-        st.info("Commencez par définir le **territoire d'étude** (région, département, EPCI).", icon="🧭")
-        st.page_link("app_pages/p01_territoire.py", label="Définir le territoire d'étude", icon="🗺️")
+        st.info("Définissez d'abord le territoire d'étude, ou ouvrez la démonstration depuis l'accueil.", icon=":material/map:")
+        st.page_link("app_pages/p01_territoire.py", label="Définir le territoire d'étude", icon=":material/arrow_forward:")
         st.stop()
 
 
@@ -128,23 +219,25 @@ def progress_callback(bar):
 
 
 def sidebar_status() -> None:
+    b = branding_courant()
     t = territoire()
     with st.sidebar:
-        st.markdown(f"### 🌾 {APP_NAME}")
-        st.caption(APP_TAGLINE)
+        if b.logo:
+            st.logo(str(b.logo), size="large")
+        st.markdown(f'<div class="epa-brand">{html.escape(b.nom)}<span>{APP_NAME}</span></div>', unsafe_allow_html=True)
+        st.write("")
         if t is not None:
-            st.success(f"**Territoire** : {t.nom}\n\n{len(t.communes)} communes", icon="🗺️")
+            demo = " (démonstration)" if st.session_state.get("mode_demo") else ""
+            st.markdown(f"**{html.escape(t.nom)}**{demo}  \n{len(t.communes)} communes")
         else:
-            st.warning("Territoire non défini", icon="🧭")
+            st.caption("Aucun territoire défini")
         e = st.session_state.get("emprise")
         if e is not None and not e.empty:
             from .projet import surface_ha
 
-            st.info(f"**Emprise projet** : {surface_ha(e):.1f} ha", icon="📐")
-        modules = {
-            "RPG": "rpg", "RA 2020": "ra2020", "Filières": "filieres", "SIQO": "siqo", "Bio": "bio",
-            "Foncier": "dvf", "Compensation": "compensation",
-        }
-        done = [k for k, v in modules.items() if resultat(v) is not None]
+            st.caption(f"Emprise du projet : {surface_ha(e):.1f} ha".replace(".", ","))
+        modules = {"RPG": "rpg", "RA 2020": "ra2020", "Filières": "filieres", "SIQO": "siqo", "Bio": "bio",
+                   "Foncier": "dvf", "Compensation": "compensation"}
         if t is not None:
-            st.caption("Modules calculés : " + (", ".join(done) if done else "aucun"))
+            done = sum(resultat(v) is not None for v in modules.values())
+            st.progress(done / len(modules), text=f"{done} modules calculés sur {len(modules)}")

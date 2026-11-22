@@ -106,3 +106,18 @@ def test_departement_reference():
                          geometry=[box(0, 0, 1, 1), box(1, 0, 2, 1)], crs=4326)
     assert C.departement_reference(g, "1") == "32"
     assert C.departement_reference(g, None) == "47"
+
+
+# --- composants ------------------------------------------------------------
+from epa import ui  # noqa: E402
+
+
+def test_tuile_valeur_manquante():
+    h = ui.tuile_comparee("Exploitations", {"Périmètre": None, "Gers": -14.5}, "%")
+    assert "Non disponible" in h and "−14,5 %" in h
+
+
+def test_tuile_format_francais():
+    assert ui.fmt_val(-13.1, "%", 1, signe=True) == "−13,1 %"
+    assert ui.fmt_val(2.6, "%", 1, signe=True) == "+2,6 %"
+    assert ui.fmt_val(448499, "ha") == "448 499 ha"

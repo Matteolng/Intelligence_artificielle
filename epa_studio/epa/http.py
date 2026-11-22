@@ -13,7 +13,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .config import CACHE_DIR, CACHE_TTL_DAYS, USER_AGENT
+from .config import CACHE_DIR, CACHE_TTL_DAYS, DEMO_CACHE_DIR, USER_AGENT
 
 _session_lock = threading.Lock()
 _session: requests.Session | None = None
@@ -122,6 +122,12 @@ def _cache_path(namespace: str, key: str):
     return d / f"{h}.pkl"
 
 
+def _demo_path(namespace: str, key: str):
+    h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
+    p = DEMO_CACHE_DIR / namespace / f"{h}.pkl"
+    return p if p.exists() else None
+
+
 def disk_cache(namespace: str) -> Callable:
     """Décorateur : met en cache le résultat (picklable) d'une fonction sur disque."""
     ttl = CACHE_TTL_DAYS.get(namespace, 30) * 86400
@@ -137,6 +143,13 @@ def disk_cache(namespace: str) -> Callable:
                         return pickle.load(f)
                 except Exception:  # cache corrompu : on recalcule
                     path.unlink(missing_ok=True)
+            demo = _demo_path(namespace, key)
+            if demo is not None:  # cache de démonstration livré : pas d'expiration (données datées dans la bibliographie)
+                try:
+                    with open(demo, "rb") as f:
+                        return pickle.load(f)
+                except Exception:
+                    pass
             result = fn(*args, **kwargs)
             tmp = path.with_suffix(".tmp")
             with open(tmp, "wb") as f:
