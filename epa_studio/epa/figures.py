@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import math
 import re
+import textwrap
 
 import geopandas as gpd
 import matplotlib
@@ -114,7 +115,7 @@ def _palette(categories_par_poids: list[str], max_slots: int = 7) -> dict[str, s
 
 
 def _legende(ax_or_fig, pal: dict[str, str], autres: bool, **kw) -> None:
-    h = [Patch(facecolor=c, edgecolor="white", label=k) for k, c in pal.items()]
+    h = [Patch(facecolor=c, edgecolor="white", label=textwrap.fill(str(k), 30)) for k, c in pal.items()]
     if autres:
         h.append(Patch(facecolor=AUTRE, edgecolor="white", label="Autres"))
     ax_or_fig.legend(handles=h, frameon=False, fontsize=7, **kw)
@@ -227,7 +228,7 @@ def carte_otex(communes: gpd.GeoDataFrame, df_otex: pd.DataFrame | None, col_cod
     _cadre(ax, bbox)
     _echelle(ax, bbox)
     _nord(ax)
-    h = [Patch(facecolor=c, edgecolor="white", label=k) for k, c in pal.items()]
+    h = [Patch(facecolor=c, edgecolor="white", label=textwrap.fill(str(k), 34)) for k, c in pal.items()]
     if len(ordre) > len(pal):
         h.append(Patch(facecolor=AUTRE, label="Autres orientations"))
     if not nd.empty:
