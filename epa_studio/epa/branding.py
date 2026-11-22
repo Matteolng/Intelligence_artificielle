@@ -55,3 +55,11 @@ def branding_courant(state=None) -> Branding:
     if not s:
         return b
     return replace(b, nom=(s.get("nom") or b.nom).strip(), couleur=couleur_valide(s.get("couleur") or b.couleur))
+
+
+def contraste_blanc(couleur: str) -> float:
+    """Rapport de contraste WCAG 2 entre la couleur et le blanc (texte blanc sur bouton, liens sur fond clair)."""
+    c = [int(couleur[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+    lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    return 1.05 / (lum + 0.05)

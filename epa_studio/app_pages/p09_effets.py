@@ -105,7 +105,7 @@ suggestions = [
     "Phasage des travaux hors périodes sensibles pour l'exploitation",
     "Garantie de démantèlement et de remise en état des sols",
 ]
-choix = st.multiselect("Mesures à intégrer (suggestions)", suggestions, default=st.session_state.get("mesures_choix", []))
+choix = st.multiselect("Mesures à intégrer (suggestions)", suggestions, default=st.session_state.get("mesures_choix", []), placeholder="Choisir")
 autres = st.text_area("Autres mesures (une par ligne)", st.session_state.get("mesures_autres", ""))
 st.session_state["mesures_choix"] = choix
 st.session_state["mesures_autres"] = autres

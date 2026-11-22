@@ -65,7 +65,7 @@ with tab1:
 
 with tab2:
     cats = sorted(df["categorie"].unique())
-    sel = st.multiselect("Catégories affichées", cats, default=cats)
+    sel = st.multiselect("Catégories affichées", cats, default=cats, placeholder="Choisir")
     seuil = st.slider("Effectif minimal (borne haute de tranche)", 0, 500, 0, step=5)
     d = df[df["categorie"].isin(sel) & (df["eff_max"] >= seuil)]
     m = cartes.base_map(t.bounds)

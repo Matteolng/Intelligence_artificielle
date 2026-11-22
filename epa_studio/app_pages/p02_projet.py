@@ -38,7 +38,7 @@ with tab1:
         zt_opts = ["À définir", "Oui – zone témoin prévue", "Dérogation (taux < 40 % et impossibilité technique)",
                    "Dérogation (installation similaire avec zone témoin)", "Dérogation (technologie éprouvée)"]
         zt = c2.selectbox("Zone témoin", zt_opts, index=zt_opts.index(pj.zone_temoin) if pj.zone_temoin in zt_opts else 0)
-        services = st.multiselect("Services apportés à la parcelle (art. L. 314-36 code de l'énergie)", P.SERVICES_AGRIVOLTAIQUES, pj.services)
+        services = st.multiselect("Services apportés à la parcelle (art. L. 314-36 code de l'énergie)", P.SERVICES_AGRIVOLTAIQUES, pj.services, placeholder="Choisir")
         infra = st.number_input("Surfaces soustraites définitivement à la production : pistes, postes, locaux, bases de vie… (ha)",
                                 min_value=0.0, value=float(pj.surface_infrastructures_ha), step=0.1)
         desc = st.text_area("Description libre du projet", pj.description, height=110)

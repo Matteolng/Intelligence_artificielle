@@ -121,3 +121,8 @@ def test_tuile_format_francais():
     assert ui.fmt_val(-13.1, "%", 1, signe=True) == "−13,1 %"
     assert ui.fmt_val(2.6, "%", 1, signe=True) == "+2,6 %"
     assert ui.fmt_val(448499, "ha") == "448 499 ha"
+
+
+def test_contraste_couleur():
+    assert round(B.contraste_blanc("#2F6B3A"), 2) == 6.39
+    assert B.contraste_blanc("#FFD700") < 4.5

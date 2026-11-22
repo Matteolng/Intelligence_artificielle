@@ -85,7 +85,7 @@ def g_rpg():
 
 
 if a_emprise:
-    st.session_state["fig_rpg_annees"] = st.multiselect("Millésimes du RPG", sorted(annees_dispo, reverse=True), default=choix)
+    st.session_state["fig_rpg_annees"] = st.multiselect("Millésimes du RPG", sorted(annees_dispo, reverse=True), default=choix, placeholder="Choisir")
     choix = st.session_state["fig_rpg_annees"]
 bloc("rpg_annees", "Cultures déclarées sur le site, année par année", "Parcelles du RPG intersectant l'emprise, sur photographie aérienne.",
      g_rpg, tuple(f"rpg:{a}" for a in sorted(choix)) + ("ortho",),

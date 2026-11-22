@@ -19,7 +19,7 @@ if set(t.codes_departements) & DVF_DEPARTEMENTS_NON_COUVERTS:
 
 c1, c2, c3 = st.columns(3)
 annee_min = c1.number_input("Mutations depuis l'année", min_value=2014, max_value=2026, value=2014, step=1)
-types = c2.multiselect("Types de biens", list(DVF_TYPES_AGRICOLES), default=list(DVF_TYPES_AGRICOLES), format_func=lambda c: DVF_TYPES_AGRICOLES[c])
+types = c2.multiselect("Types de biens", list(DVF_TYPES_AGRICOLES), default=list(DVF_TYPES_AGRICOLES), format_func=lambda c: DVF_TYPES_AGRICOLES[c], placeholder="Choisir")
 c3.write("")
 c3.write("")
 go = c3.button("Charger les transactions", type="primary", width="stretch")

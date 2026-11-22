@@ -44,7 +44,7 @@ a, .stPageLink a p {{ color: var(--accent); }}
 .epa-tile .v {{ color: var(--texte); font-size: 2rem; font-weight: 600; line-height: 1.15; margin: .3rem 0 .15rem;
                font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }}
 .epa-tile .s {{ color: var(--second); font-size: .82rem; }}
-.epa-tile .na {{ color: var(--muet); font-size: 1.05rem; font-weight: 500; }}
+.epa-tile .na {{ color: var(--second); font-size: 1.05rem; font-weight: 500; }}
 .epa-tile .cmp {{ border-top: 1px solid #E8E8ED; margin-top: .7rem; padding-top: .55rem; display: grid;
                  grid-template-columns: 1fr auto; row-gap: .2rem; font-size: .84rem; color: var(--second);
                  font-variant-numeric: tabular-nums; }}

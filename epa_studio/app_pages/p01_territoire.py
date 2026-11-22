@@ -57,7 +57,7 @@ with st.expander("Ajuster la liste des communes (facultatif)"):
             res = T.search_communes(q)
             if not res.empty:
                 opts = {r["code"]: f"{r['nom']} ({r['code']}, dép. {r.get('codeDepartement', '')})" for _, r in res.iterrows()}
-                choix = st.multiselect("Résultats", list(opts), format_func=lambda c: opts[c])
+                choix = st.multiselect("Résultats", list(opts), format_func=lambda c: opts[c], placeholder="Choisir")
                 if st.button("Ajouter ces communes") and choix:
                     ajout = sorted(set(ajout) | set(choix))
                     cfg["communes_ajoutees"] = ajout
@@ -74,7 +74,7 @@ with st.expander("Ajuster la liste des communes (facultatif)"):
         all_c = {r["code"]: f"{r['nom']} ({r['code']})" for _, r in t_prev.communes.iterrows()}
         all_c.update({c: c for c in retirees if c not in all_c})
         retirees = st.multiselect("Communes à retirer du territoire", list(all_c), default=[c for c in retirees if c in all_c],
-                                  format_func=lambda c: all_c[c])
+                                  format_func=lambda c: all_c[c], placeholder="Choisir")
 
 nom = st.text_input("Nom du territoire d'étude", value=cfg.get("nom") or (" + ".join(epci_opts[e] for e in sel_epcis) if sel_epcis else ""))
 

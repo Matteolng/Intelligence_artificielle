@@ -5,7 +5,7 @@ from epa.reglementation import ADMIN, OFFICIEL, REFERENTIEL, SECONDAIRE, SOURCES
 from epa.ui import badge, hero
 
 hero("Cadre réglementaire et sources", "Textes applicables à l'étude préalable agricole, à la compensation collective et à "
-     "l'agrivoltaïsme, avec le statut de vérification de chaque élément et les sources des données.", "Livrables")
+     "l'agrivoltaïsme, avec le statut de vérification de chaque élément et les sources des données.", "Étape 4 sur 4 : livrables")
 
 st.markdown(
     f"{badge(OFFICIEL)} lu sur une source officielle &nbsp; {badge(ADMIN)} guide ou page d'un service de l'État &nbsp; "
