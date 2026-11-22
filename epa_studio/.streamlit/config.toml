@@ -1,0 +1,22 @@
+[server]
+headless = true
+port = 8501
+address = "0.0.0.0"
+maxUploadSize = 200
+# Derrière le proxy d'Onyxia (SSP Cloud), ces protections empêchent parfois l'envoi de fichiers.
+# Elles sont désactivées pour un usage interne ; réactivez-les si l'application est exposée publiquement.
+enableCORS = false
+enableXsrfProtection = false
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1F5F3F"
+backgroundColor = "#FAFBF9"
+secondaryBackgroundColor = "#EEF3EE"
+textColor = "#1F2A24"
+font = "sans serif"
