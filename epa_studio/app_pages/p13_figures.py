@@ -31,15 +31,19 @@ code_dep = departement_reference(t.communes, site)
 
 
 def bloc(cle: str, titre: str, description: str, generer, src: tuple[str, ...], requis: str | None = None):
+    from epa import sources as S
+
     st.markdown(f"#### {titre}")
     st.caption(description)
     if requis:
-        manquant(titre, ", ".join(src), requis)
+        attendu = "IGN / ASP, registre parcellaire graphique" if src and src[0].startswith("rpg:") else "; ".join(S.citer(c) for c in src)
+        manquant(titre, attendu, requis)
         st.divider()
         return
     png = resultat(f"fig::{cle}")
     if png is None:
-        if st.button("Générer la figure", key=f"gen_{cle}"):
+        # en démonstration, les données sont en cache : la figure est produite directement
+        if st.session_state.get("mode_demo") or st.button("Générer la figure", key=f"gen_{cle}"):
             with st.spinner("Génération de la figure…"):
                 try:
                     png = generer()
@@ -53,7 +57,6 @@ def bloc(cle: str, titre: str, description: str, generer, src: tuple[str, ...], 
     if png:
         st.image(png, width="stretch")
         bouton_png(png, cle)
-        from epa import sources as S
         for c in src:
             S.enregistrer(c)
     st.divider()

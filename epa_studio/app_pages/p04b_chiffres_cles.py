@@ -9,7 +9,7 @@ from epa.territoire import list_departements
 from epa.ui import bouton_png, entete, manquant, phrase, require_territoire, resultat, sources, stocker, tuile_comparee, tuiles
 
 entete("Étape 2 sur 4 : état initial", "Chiffres clés de l'agriculture",
-       "Le périmètre d'étude comparé à son département et à la France, d'après les recensements agricoles 2010 et 2020.")
+       "Le périmètre d'étude comparé à son département et à la France, d'après les recensements agricoles 2010 et 2020. Les évolutions portent sur 2010-2020.")
 require_territoire()
 t = st.session_state["territoire"]
 
@@ -39,15 +39,15 @@ def vals(col):
 
 
 tuiles([
-    tuile_comparee("Exploitations agricoles en 2020", vals("Exploitations 2020"), "", 0),
-    tuile_comparee("Évolution des exploitations 2010-2020", vals("Évolution exploitations 2010-2020 (%)"), "%", 1, signe=True),
-    tuile_comparee("Surface agricole utilisée en 2020", vals("SAU 2020 (ha)"), "ha", 0),
-    tuile_comparee("Évolution de la SAU 2010-2020", vals("Évolution SAU 2010-2020 (%)"), "%", 1, signe=True),
+    tuile_comparee("Exploitations en 2020", vals("Exploitations 2020"), "", 0),
+    tuile_comparee("Exploitations, évolution", vals("Évolution exploitations 2010-2020 (%)"), "%", 1, signe=True),
+    tuile_comparee("SAU en 2020", vals("SAU 2020 (ha)"), "ha", 0),
+    tuile_comparee("SAU, évolution", vals("Évolution SAU 2010-2020 (%)"), "%", 1, signe=True),
 ])
 st.write("")
 tuiles([
     tuile_comparee("SAU moyenne par exploitation", vals("SAU moyenne par exploitation (ha)"), "ha", 1),
-    tuile_comparee("Communes sans donnée diffusée", {"Périmètre": p.get("Communes sans donnée (secret ou absence)")}, "", 0,
+    tuile_comparee("Communes non diffusées", {"Périmètre": p.get("Communes sans donnée (secret ou absence)")}, "", 0,
                    sous=f"sur {len(t.communes)} communes (secret statistique ou absence)"),
     "", "",
 ])

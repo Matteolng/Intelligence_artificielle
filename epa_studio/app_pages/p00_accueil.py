@@ -8,7 +8,6 @@ from epa.http import DataSourceError
 b = branding_courant()
 st.markdown(
     f"""<div class="epa-home">
-  <div class="etape">{APP_NAME} pour {b.nom}</div>
   <h1>L'état initial agricole d'un territoire, prêt en quelques minutes.</h1>
   <p>Cartes, chiffres clés comparés au département et à la France, figures prêtes pour le rapport :
   tout ce qui se répète d'une étude préalable agricole à l'autre est calculé depuis les données publiques,

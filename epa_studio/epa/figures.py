@@ -55,6 +55,8 @@ def _cadre(ax, bbox) -> None:
     ax.set_ylim(bbox[1], bbox[3])
     ax.set_xticks([])
     ax.set_yticks([])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
     for s in ax.spines.values():
         s.set_edgecolor(FILET)
         s.set_linewidth(0.6)
@@ -93,9 +95,10 @@ def _fond(ax, bbox, couche: str, alpha: float = 1.0) -> bool:
 
 
 def _export(fig, titre: str, source: str, sous_titre: str = "") -> bytes:
-    fig.text(0.012, 0.985, titre, fontsize=12, fontweight="semibold", color=TEXTE, va="top", ha="left")
+    h = fig.get_size_inches()[1]
+    fig.text(0.012, 1 - 0.12 / h, titre, fontsize=12, fontweight="semibold", color=TEXTE, va="top", ha="left")
     if sous_titre:
-        fig.text(0.012, 0.945, sous_titre, fontsize=8, color=SECOND, va="top", ha="left")
+        fig.text(0.012, 1 - 0.36 / h, sous_titre, fontsize=8, color=SECOND, va="top", ha="left")
     b = branding_courant()
     fig.text(0.012, 0.012, f"Source : {source}", fontsize=6.5, color=SECOND, ha="left", va="bottom")
     fig.text(0.988, 0.012, b.nom, fontsize=6.5, color=SECOND, ha="right", va="bottom")
@@ -183,8 +186,8 @@ def localisation_3_echelles(departement: gpd.GeoDataFrame, perimetre: gpd.GeoDat
     ref = emprise.to_crs(M) if emprise is not None and not emprise.empty else c
     b3 = _bbox(c, 0.08, carre=True)
     _fond(axs[2], b3, ORTHO)
-    c.boundary.plot(ax=axs[2], color="white", linewidth=2.2)
-    c.boundary.plot(ax=axs[2], color=acc, linewidth=1.1)
+    c.boundary.plot(ax=axs[2], color="white", linewidth=3)
+    c.boundary.plot(ax=axs[2], color=acc, linewidth=1.6)
     if ref is not c:
         ref.plot(ax=axs[2], facecolor="none", edgecolor="white", linewidth=1.8, zorder=3)
         ref.plot(ax=axs[2], facecolor="none", edgecolor=TEXTE, linewidth=0.8, zorder=4)
@@ -286,8 +289,8 @@ def evolutions_comparees(comp: pd.DataFrame) -> bytes | None:
         return None
     acc = branding_courant().couleur
     lab = comp["Territoire"].tolist()
-    fig, axs = plt.subplots(1, 2, figsize=(10, 3.2), sharey=True)
-    fig.subplots_adjust(left=0.2, right=0.97, top=0.74, bottom=0.14, wspace=0.12)
+    fig, axs = plt.subplots(1, 2, figsize=(9, 2.9), sharey=True)
+    fig.subplots_adjust(left=0.15, right=0.98, top=0.76, bottom=0.12, wspace=0.04)
     for ax, (c, t) in zip(axs, cols):
         v = pd.to_numeric(comp.get(c), errors="coerce")
         y = list(range(len(lab)))[::-1]
