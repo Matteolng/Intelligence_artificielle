@@ -6,19 +6,19 @@ from epa.ui import hero, kpis, require_territoire, resultat, source, stocker, te
 
 hero("Compensation collective agricole", "Évaluation financière de l'impact du projet sur l'économie agricole et montant de la "
      "compensation collective, selon une méthode paramétrable conforme à la structure des doctrines départementales.",
-     "Étape 3 · Impacts – évaluation financière")
+     "Étape 3 sur 4 : impacts, évaluation financière")
 require_territoire()
 re_ = resultat("rpg_emprise")
 if re_ is None or re_["gdf"].empty:
     st.info("Analysez d'abord l'emprise du projet (page **Effets du projet**) : le calcul s'appuie sur les cultures déclarées dans l'emprise.")
-    st.page_link("app_pages/p09_effets.py", label="Analyser l'emprise", icon="⚖️")
+    st.page_link("app_pages/p09_effets.py", label="Analyser l'emprise", icon=":material/arrow_forward:")
     st.stop()
 
 pj = st.session_state.get("projet")
 ge = re_["gdf"]
 base = ge.groupby("groupe", as_index=False)["surface_ha"].sum().sort_values("surface_ha", ascending=False)
 
-with st.expander("📐 Méthode de calcul", expanded=False):
+with st.expander("Méthode de calcul", expanded=False):
     st.markdown(
         """
 **Perte annuelle primaire** = Σ (surface affectée effective × produit brut par ha)
@@ -115,4 +115,4 @@ if res.get("etp_concernes") is not None:
 st.markdown("##### Analyse de sensibilité – montant (€) selon la durée et le ratio")
 st.dataframe(sens.style.format("{:,.0f}"))
 source("Calcul EPA Studio à partir des surfaces RPG de l'emprise et des paramètres saisis. Méthode générique : à adapter à la doctrine départementale.")
-st.page_link("app_pages/p11_rapport.py", label="Étape suivante : générer le rapport", icon="➡️")
+st.page_link("app_pages/p11_rapport.py", label="Étape suivante : générer le rapport", icon=":material/arrow_forward:")

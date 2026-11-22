@@ -1,5 +1,7 @@
 import plotly.express as px
 import streamlit as st
+
+from epa.sources import enregistrer
 from streamlit_folium import st_folium
 
 from epa import bio_siqo, cartes
@@ -8,18 +10,18 @@ from epa.http import DataSourceError
 from epa.ui import hero, kpis, require_territoire, resultat, source, stocker, texte_auto
 
 hero("Signes de qualité et agriculture biologique", "Aires AOC/AOP et IGP/IG couvrant les communes du territoire (INAO) et "
-     "opérateurs engagés en agriculture biologique (Agence Bio).", "Étape 2 · État initial – qualité et valorisation")
+     "opérateurs engagés en agriculture biologique (Agence Bio).", "Étape 2 sur 4 : état initial, qualité et valorisation")
 require_territoire()
 t = st.session_state["territoire"]
 codes = t.codes_communes
 
-tab1, tab2 = st.tabs(["🏅 SIQO (INAO)", "🌱 Agriculture biologique"])
+tab1, tab2 = st.tabs(["SIQO (INAO)", "Agriculture biologique"])
 
 with tab1:
     siqo = resultat("siqo")
     if siqo is None:
         st.caption("Premier chargement : téléchargement des fichiers INAO (≈ 45 Mo), mis ensuite en cache.")
-        if st.button("📥 Charger les aires SIQO", type="primary"):
+        if st.button("Charger les aires SIQO", type="primary"):
             with st.spinner("Téléchargement des fichiers INAO…"):
                 try:
                     siqo = bio_siqo.siqo_territoire(codes)
@@ -55,13 +57,14 @@ with tab1:
                 cartes.add_emprise(m, st.session_state.get("emprise"))
                 cartes.finalize(m)
                 st_folium(m, height=460, use_container_width=True, returned_objects=[], key="map_siqo")
+        enregistrer("inao")
         source("INAO – Aires géographiques des AOC/AOP et des IGP/IG par commune, et produits rattachés (data.gouv.fr, Licence Ouverte). "
                "Les délimitations officielles figurent dans les cahiers des charges.")
 
 with tab2:
     bio = resultat("bio")
     if bio is None:
-        if st.button("📥 Charger les opérateurs bio", type="primary"):
+        if st.button("Charger les opérateurs bio", type="primary"):
             with st.spinner("Interrogation de l'annuaire Agence Bio (par département)…"):
                 try:
                     bio = bio_siqo.operateurs_bio(t.codes_departements, codes)
@@ -96,6 +99,7 @@ with tab2:
                 cartes.finalize(m)
                 st_folium(m, height=420, use_container_width=True, returned_objects=[], key="map_bio")
             st.dataframe(bio.drop(columns=["latitude", "longitude"]), hide_index=True, height=360)
+        enregistrer("agencebio")
         source("Agence Bio – annuaire des opérateurs (opendata.agencebio.org). Opérateurs dont une adresse active est située sur le territoire.")
 
-st.page_link("app_pages/p07_foncier.py", label="Étape suivante : foncier agricole", icon="➡️")
+st.page_link("app_pages/p07_foncier.py", label="Étape suivante : foncier agricole", icon=":material/arrow_forward:")

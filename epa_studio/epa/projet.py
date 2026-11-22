@@ -106,6 +106,21 @@ def communes_concernees(emprise: gpd.GeoDataFrame, communes: gpd.GeoDataFrame) -
     return communes.loc[communes.intersects(e), "nom"].tolist()
 
 
+def code_commune_site(emprise: gpd.GeoDataFrame | None, communes: gpd.GeoDataFrame) -> str | None:
+    """Code INSEE de la commune qui porte la plus grande part de l'emprise (None sans emprise ou hors territoire)."""
+    if emprise is None or emprise.empty:
+        return None
+    e = emprise.to_crs(L93).geometry.union_all()
+    c = communes.to_crs(L93)
+    inter = c.geometry.intersection(e).area
+    return str(c.loc[inter.idxmax(), "code"]) if inter.max() > 0 else None
+
+
+def site_courant(state, communes: gpd.GeoDataFrame) -> str | None:
+    """Commune du site : déduite de l'emprise si elle existe, sinon choisie par l'utilisateur (ou la démonstration)."""
+    return code_commune_site(state.get("emprise"), communes) or state.get("site_commune")
+
+
 def controle_agrivoltaique(p: Projet) -> list[tuple[str, str, str]]:
     """Points de contrôle (critère, statut, commentaire) – à confronter au texte en vigueur."""
     out = []

@@ -1,6 +1,8 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+from epa.sources import enregistrer
 from streamlit_folium import st_folium
 
 from epa import cartes, rpg
@@ -10,7 +12,7 @@ from epa.http import DataSourceError
 from epa.ui import hero, kpis, progress_callback, require_territoire, resultat, source, stocker, texte_auto
 
 hero("Occupation agricole du territoire", "Assolement, cultures, prairies permanentes et surfaces en agriculture biologique "
-     "d'après le Registre parcellaire graphique (déclarations PAC).", "Étape 2 · État initial – production primaire")
+     "d'après le Registre parcellaire graphique (déclarations PAC).", "Étape 2 sur 4 : état initial, production primaire")
 require_territoire()
 t = st.session_state["territoire"]
 
@@ -18,7 +20,7 @@ c1, c2 = st.columns([2, 1])
 annee = c1.selectbox("Millésime du RPG", list(RPG_LAYERS), index=0)
 c2.write("")
 c2.write("")
-lancer = c2.button("📥 Charger / mettre à jour le RPG", type="primary", width="stretch")
+lancer = c2.button("Charger / mettre à jour le RPG", type="primary", width="stretch")
 
 res = resultat("rpg")
 if res is not None and res["annee"] != annee:
@@ -57,7 +59,7 @@ kpis([
 ])
 texte_auto(texte_rpg(ind, asso, annee_lbl, t.surface_ha))
 
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Assolement", "🗺️ Carte", "🏘️ Par commune", "🔁 Évolution"])
+tab1, tab2, tab3, tab4 = st.tabs(["Assolement", "Carte", "Par commune", "Évolution"])
 
 with tab1:
     c1, c2 = st.columns([3, 2])
@@ -80,6 +82,7 @@ with tab1:
     st.dataframe(res["cultures"].rename(columns={"culture": "Culture", "surface_ha": "Surface (ha)", "nb_parcelles": "Parcelles", "part_pct": "Part (%)"}),
                  hide_index=True, height=360,
                  column_config={"Surface (ha)": st.column_config.NumberColumn(format="%.1f"), "Part (%)": st.column_config.ProgressColumn(format="%.1f %%", min_value=0, max_value=100)})
+    enregistrer("rpg:" + str(annee_lbl)[:4])
     source(f"Registre parcellaire graphique {annee_lbl} – IGN / ASP, Géoplateforme (WFS). Surfaces calculées en Lambert-93.")
 
 with tab2:
@@ -149,4 +152,4 @@ with tab4:
                      column_config={c: st.column_config.NumberColumn(format="%.1f") for c in ev.columns if c != "groupe"})
         source(f"RPG {ref.split(' ')[0]} et {annee_lbl} – IGN / ASP.")
 
-st.page_link("app_pages/p04_exploitations.py", label="Étape suivante : structures des exploitations (RA 2020)", icon="➡️")
+st.page_link("app_pages/p04_exploitations.py", label="Étape suivante : structures des exploitations (RA 2020)", icon=":material/arrow_forward:")

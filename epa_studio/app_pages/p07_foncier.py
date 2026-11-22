@@ -1,6 +1,8 @@
 import plotly.express as px
 import streamlit as st
 
+from epa.sources import enregistrer
+
 from epa import foncier
 from epa.analyse import fnum, texte_foncier
 from epa.config import DVF_DEPARTEMENTS_NON_COUVERTS, DVF_TYPES_AGRICOLES
@@ -8,7 +10,7 @@ from epa.http import DataSourceError
 from epa.ui import hero, kpis, progress_callback, require_territoire, resultat, source, stocker, texte_auto
 
 hero("Foncier agricole", "Transactions de terrains agricoles (terres et prés, vignes, vergers) issues des Demandes de valeurs "
-     "foncières, et prix à l'hectare observés sur le territoire.", "Étape 2 · État initial – foncier")
+     "foncières, et prix à l'hectare observés sur le territoire.", "Étape 2 sur 4 : état initial, foncier")
 require_territoire()
 t = st.session_state["territoire"]
 
@@ -20,7 +22,7 @@ annee_min = c1.number_input("Mutations depuis l'année", min_value=2014, max_val
 types = c2.multiselect("Types de biens", list(DVF_TYPES_AGRICOLES), default=list(DVF_TYPES_AGRICOLES), format_func=lambda c: DVF_TYPES_AGRICOLES[c])
 c3.write("")
 c3.write("")
-go = c3.button("📥 Charger les transactions", type="primary", width="stretch")
+go = c3.button("Charger les transactions", type="primary", width="stretch")
 
 raw = resultat("dvf_raw")
 if go:
@@ -82,7 +84,8 @@ st.markdown("##### Statistiques par année")
 st.dataframe(st_annee, hide_index=True, column_config={c: st.column_config.NumberColumn(format="%.0f") for c in st_annee.columns})
 with st.expander("Mutations retenues"):
     st.dataframe(d, hide_index=True, height=360)
+enregistrer("dvf")
 source("DGFiP – Demandes de valeurs foncières (DVF), via l'API Données foncières du Cerema (typologie DV3F). "
        "Prix = valeur foncière / surface de terrain de la mutation. Indicateur à rapprocher du barème indicatif de la valeur vénale "
        "des terres agricoles (arrêté annuel) et des références SAFER.")
-st.page_link("app_pages/p08_atlas.py", label="Étape suivante : atlas cartographique", icon="➡️")
+st.page_link("app_pages/p08_atlas.py", label="Étape suivante : atlas cartographique", icon=":material/arrow_forward:")

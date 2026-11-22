@@ -1,5 +1,7 @@
 import plotly.express as px
 import streamlit as st
+
+from epa.sources import enregistrer
 from streamlit_folium import st_folium
 
 from epa import cartes, filieres
@@ -9,7 +11,7 @@ from epa.http import DataSourceError
 from epa.ui import hero, kpis, progress_callback, require_territoire, resultat, source, stocker, texte_auto, zone_epcis
 
 hero("Filières amont et aval", "Services et approvisionnement, première transformation, collecte et négoce, coopératives et CUMA "
-     "présents sur le territoire (répertoire SIRENE).", "Étape 2 · État initial – transformation et commercialisation")
+     "présents sur le territoire (répertoire SIRENE).", "Étape 2 sur 4 : état initial, transformation et commercialisation")
 require_territoire()
 t = st.session_state["territoire"]
 
@@ -23,7 +25,7 @@ with st.expander("Catégories et codes NAF utilisés"):
 
 df = resultat("filieres")
 if df is None:
-    if st.button("📥 Rechercher les établissements du territoire", type="primary"):
+    if st.button("Rechercher les établissements du territoire", type="primary"):
         bar = st.progress(0.0, text="Interrogation de l'API Recherche d'entreprises…")
         try:
             df = filieres.filieres_territoire(zone_epcis(), t.codes_communes, progress=progress_callback(bar))
@@ -48,7 +50,7 @@ kpis([
 ])
 texte_auto(texte_filieres(synth, len(df)))
 
-tab1, tab2, tab3 = st.tabs(["📊 Synthèse", "🗺️ Carte", "📋 Liste des établissements"])
+tab1, tab2, tab3 = st.tabs(["Synthèse", "Carte", "Liste des établissements"])
 with tab1:
     c1, c2 = st.columns([1, 1])
     fig = px.bar(synth.sort_values("etablissements"), x="etablissements", y="categorie", orientation="h",
@@ -83,9 +85,10 @@ with tab3:
     st.dataframe(df[cols].sort_values(["categorie", "nom"]), hide_index=True, height=520)
     st.download_button("Télécharger la liste (CSV)", df[cols].to_csv(index=False, sep=";").encode("utf-8-sig"), "filieres_territoire.csv", "text/csv")
 
+enregistrer("sirene")
 source("INSEE – SIRENE / INPI – RNE, via l'API Recherche d'entreprises (DINUM) : établissements actifs localisés sur le territoire. "
        "Le code NAF et les tranches d'effectifs sont déclaratifs : liste à vérifier et à compléter par des entretiens.")
 if st.button("Relancer la recherche"):
     st.session_state.pop("res::filieres", None)
     st.rerun()
-st.page_link("app_pages/p06_qualite.py", label="Étape suivante : signes de qualité et agriculture biologique", icon="➡️")
+st.page_link("app_pages/p06_qualite.py", label="Étape suivante : signes de qualité et agriculture biologique", icon=":material/arrow_forward:")

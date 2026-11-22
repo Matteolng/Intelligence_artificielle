@@ -1,65 +1,71 @@
 import streamlit as st
 
+from epa.branding import branding_courant
 from epa.config import APP_NAME, APP_VERSION
-from epa.http import cache_size_mb, clear_cache
-from epa.ui import card, hero
+from epa.demo import DEMO_NOM, charger_demo
+from epa.http import DataSourceError
 
-hero(
-    f"{APP_NAME}",
-    "Construisez l'état initial de l'économie agricole d'un territoire en quelques minutes : cartes, tableaux, statistiques "
-    "et rapport Word structuré selon l'article D. 112-1-19 du code rural. Pensé pour les bureaux d'études et les projets agrivoltaïques.",
-    "Études préalables agricoles · Compensation collective · Agrivoltaïsme",
+b = branding_courant()
+st.markdown(
+    f"""<div class="epa-home">
+  <div class="etape">{APP_NAME} pour {b.nom}</div>
+  <h1>L'état initial agricole d'un territoire, prêt en quelques minutes.</h1>
+  <p>Cartes, chiffres clés comparés au département et à la France, figures prêtes pour le rapport :
+  tout ce qui se répète d'une étude préalable agricole à l'autre est calculé depuis les données publiques,
+  avec ses sources. L'analyse reste celle du chargé d'études.</p>
+</div>""",
+    unsafe_allow_html=True,
 )
 
-st.markdown("#### Le parcours")
-c = st.columns(4)
-c[0].markdown(card("1 · Cadrage", "Choisissez la région, le ou les départements, les EPCI et ajustez les communes. "
-                                  "Importez ou dessinez l'emprise du projet."), unsafe_allow_html=True)
-c[1].markdown(card("2 · État initial", "Assolement RPG, structures RA 2020, filières amont/aval (SIRENE), SIQO et bio, "
-                                       "prix du foncier (DVF), atlas des zonages."), unsafe_allow_html=True)
-c[2].markdown(card("3 · Impacts", "Cultures concernées par l'emprise, contrôle des critères agrivoltaïques, mesures ERC, "
-                                  "calcul paramétrable de la compensation collective."), unsafe_allow_html=True)
-c[3].markdown(card("4 · Livrables", "Rapport Word pré-rédigé avec cartes et tableaux, export Excel de toutes les données, "
-                                    "sauvegarde du projet."), unsafe_allow_html=True)
+c1, c2, _ = st.columns([1.35, 1, 1.6])
+if c1.button("Ouvrir la démonstration", type="primary", icon=":material/play_arrow:", width="stretch",
+             help="Données publiques réelles, préchargées pour une démonstration fluide"):
+    with st.spinner("Chargement du périmètre de démonstration…"):
+        try:
+            charger_demo(st.session_state)
+        except DataSourceError as e:
+            st.error(f"Le périmètre de démonstration n'a pas pu être chargé : {e}")
+            st.stop()
+    st.switch_page("app_pages/p04b_chiffres_cles.py")
+c2.page_link("app_pages/p01_territoire.py", label="Nouveau projet", icon=":material/add:")
+st.caption(f"Démonstration : {DEMO_NOM}, EPCI d'exemple et EPCI d'exemple. Vous ajoutez ensuite l'emprise de votre projet.")
 
 st.write("")
-st.page_link("app_pages/p01_territoire.py", label="Commencer : définir le territoire d'étude", icon="➡️")
+st.markdown("#### Ce que l'outil prépare pour vous")
+a, b_, c = st.columns(3, gap="large")
+a.markdown("**Chiffres clés comparés**  \nExploitations, SAU et évolutions 2010-2020 du périmètre, face au département "
+           "et à la France, avec la phrase de synthèse correspondante.")
+b_.markdown("**Figures pour le rapport**  \nLocalisation à trois échelles, cultures RPG par année sur photo aérienne, "
+            "Corine Land Cover, sols, OTEX. Export PNG 300 dpi, titre et source inclus.")
+c.markdown("**Rapport, tableaux, bibliographie**  \nRapport Word structuré selon l'article D. 112-1-19 du code rural, "
+           "export Excel de toutes les données, bibliographie des sources réellement interrogées.")
 
-st.markdown("#### Données mobilisées (toutes publiques et ouvertes)")
-st.markdown(
-    """
-| Thème | Source | Échelle |
-|---|---|---|
-| Limites administratives, population | API Découpage administratif (geo.api.gouv.fr) | Commune, EPCI |
-| Occupation agricole, cultures, bio, prairies | Registre parcellaire graphique 2015-2025 (IGN / ASP, Géoplateforme) | Parcelle |
-| Exploitations, SAU, évolutions 2010-2020 | Recensement agricole 2020 (Agreste) via l'Observatoire des territoires | Commune → région |
-| Indicateurs RA 2020 détaillés (OTEX, PBS, UGB, UTA…) | Import des exports Cartostat / DISAR (Agreste) | Commune |
-| Amont, transformation, commercialisation, coopératives, CUMA | SIRENE via l'API Recherche d'entreprises | Établissement |
-| Agriculture biologique | Annuaire de l'Agence Bio | Opérateur |
-| AOC/AOP, IGP/IG | INAO (data.gouv.fr) | Commune |
-| Prix des terres agricoles | DVF (DGFiP) via l'API Données foncières du Cerema | Mutation |
-| Zonages environnementaux, urbanisme, sols, potentiel solaire, ZAER | Géoplateforme IGN (WMS) | Couches cartographiques |
-"""
-)
+st.write("")
+st.markdown("#### Le parcours")
+etapes = [
+    ("1", "Cadrage", "Territoire d'étude et emprise du projet."),
+    ("2", "État initial", "Occupation agricole, exploitations, filières, qualité, foncier, atlas."),
+    ("3", "Impacts", "Effets du projet, mesures ERC, compensation collective."),
+    ("4", "Livrables", "Figures, rapport Word, export Excel, sources."),
+]
+cols = st.columns(4, gap="large")
+for col, (n, t, d) in zip(cols, etapes):
+    col.markdown(f'<div class="epa-step"><span>{n}</span><b>{t}</b><p>{d}</p></div>', unsafe_allow_html=True)
 
-with st.expander("Bon à savoir"):
+st.write("")
+with st.expander("Données publiques mobilisées"):
     st.markdown(
         """
-- Les données sont téléchargées à la demande puis **mises en cache** sur le disque (`~/.cache/epa_studio`) : les
-  calculs suivants sont quasi instantanés.
-- Chaque tableau indique sa **source** ; les synthèses rédigées automatiquement ne contiennent que des valeurs calculées
-  par l'outil et doivent être relues.
-- Le **référentiel réglementaire** précise, pour chaque règle, si elle a été vérifiée sur un texte officiel ou sur une
-  source secondaire. Le texte consolidé sur Légifrance fait foi.
-- L'outil ne remplace pas les enquêtes de terrain, les entretiens avec les exploitants et les filières, ni l'expertise
-  du chargé d'études.
+| Thème | Source |
+|---|---|
+| Limites administratives, population | DINUM, API Découpage administratif |
+| Occupation agricole, cultures, bio, prairies | IGN / ASP, Registre parcellaire graphique 2015-2025 |
+| Exploitations, SAU, évolutions 2010-2020 | Agreste, recensements agricoles, via l'Observatoire des territoires |
+| Amont, transformation, commercialisation | INSEE, SIRENE, via l'API Recherche d'entreprises |
+| Agriculture biologique | Agence Bio, annuaire des opérateurs |
+| AOC/AOP, IGP/IG | INAO, data.gouv.fr |
+| Prix des terres agricoles | DGFiP / Cerema, DVF |
+| Occupation du sol, sols, zonages | Copernicus CLC 2018, INRAE carte des sols, Géoplateforme IGN |
 """
     )
-
-with st.expander("Maintenance du cache"):
-    st.write(f"Taille actuelle du cache : **{cache_size_mb():.1f} Mo**")
-    if st.button("Vider le cache disque"):
-        n = clear_cache()
-        st.success(f"{n} fichiers supprimés.")
-
-st.caption(f"{APP_NAME} v{APP_VERSION} – logiciel libre d'aide à la décision. Les résultats n'engagent pas les services instructeurs.")
+st.caption(f"{APP_NAME} {APP_VERSION}. Les résultats n'engagent pas les services instructeurs ; les synthèses générées sont à relire.")

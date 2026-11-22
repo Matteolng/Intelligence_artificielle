@@ -65,6 +65,15 @@ a, .stPageLink a p {{ color: var(--accent); }}
 .epa-ko {{ background:#FDE7E6; color:#9E2620; }}
 .epa-brand {{ font-weight: 650; font-size: 1.02rem; color: var(--texte); line-height: 1.25; }}
 .epa-brand span {{ display:block; color: var(--second); font-weight: 400; font-size: .8rem; margin-top: .15rem; }}
+.epa-home {{ margin: .6rem 0 1.8rem; max-width: 820px; }}
+.epa-home .etape {{ color: var(--accent); font-weight: 600; font-size: .95rem; margin-bottom: .6rem; }}
+.epa-home h1 {{ font-size: 2.9rem; line-height: 1.08; font-weight: 650; letter-spacing: -0.03em; margin: 0 0 1rem; padding: 0; }}
+.epa-home p {{ color: var(--second); font-size: 1.15rem; line-height: 1.55; margin: 0; max-width: 64ch; }}
+.epa-step {{ border-top: 2px solid var(--texte); padding-top: .7rem; }}
+.epa-step span {{ color: var(--accent); font-weight: 650; font-size: 1.4rem; display: block; line-height: 1; margin-bottom: .45rem;
+                 font-variant-numeric: tabular-nums; }}
+.epa-step b {{ display: block; font-size: 1rem; margin-bottom: .2rem; }}
+.epa-step p {{ color: var(--second); font-size: .9rem; margin: 0; line-height: 1.45; }}
 [data-testid="stMetricValue"] {{ font-weight: 600; }}
 </style>
 """

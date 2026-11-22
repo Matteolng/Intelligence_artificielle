@@ -11,13 +11,13 @@ from epa.projet import communes_concernees, surface_ha
 from epa.ui import hero, kpis, require_territoire, resultat, source, stocker, texte_auto
 
 hero("Effets du projet sur l'économie agricole", "Cultures et surfaces déclarées concernées par l'emprise, part dans le territoire, "
-     "grille des effets et mesures d'évitement / réduction.", "Étape 3 · Impacts")
+     "grille des effets et mesures d'évitement / réduction.", "Étape 3 sur 4 : impacts")
 require_territoire()
 t = st.session_state["territoire"]
 emprise = st.session_state.get("emprise")
 if emprise is None or emprise.empty:
-    st.info("Renseignez d'abord l'**emprise du projet** (import ou dessin).", icon="📐")
-    st.page_link("app_pages/p02_projet.py", label="Définir l'emprise", icon="📐")
+    st.info("Renseignez d'abord l'**emprise du projet** (import ou dessin).", icon=":material/draw:")
+    st.page_link("app_pages/p02_projet.py", label="Définir l'emprise", icon=":material/arrow_forward:")
     st.stop()
 
 rt = resultat("rpg")
@@ -110,4 +110,4 @@ autres = st.text_area("Autres mesures (une par ligne)", st.session_state.get("me
 st.session_state["mesures_choix"] = choix
 st.session_state["mesures_autres"] = autres
 st.session_state["mesures_erc"] = choix + [l.strip() for l in autres.splitlines() if l.strip()]
-st.page_link("app_pages/p10_compensation.py", label="Étape suivante : compensation collective", icon="➡️")
+st.page_link("app_pages/p10_compensation.py", label="Étape suivante : compensation collective", icon=":material/arrow_forward:")

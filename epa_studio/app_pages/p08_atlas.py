@@ -6,7 +6,7 @@ from epa.config import BASEMAPS, WMS_LAYERS
 from epa.ui import hero, require_territoire, source
 
 hero("Atlas cartographique", "Superposez les couches de référence (agriculture, occupation du sol, urbanisme, environnement, énergie) "
-     "au territoire et à l'emprise du projet.", "Étape 2 · État initial – contexte")
+     "au territoire et à l'emprise du projet.", "Étape 2 sur 4 : état initial, contexte")
 require_territoire()
 t = st.session_state["territoire"]
 emprise = st.session_state.get("emprise")
@@ -36,4 +36,4 @@ with c2:
            "PatriNat (OFB/MNHN/CNRS), Cerema, gestionnaires de réseaux. Consulter les métadonnées de chaque couche pour sa date de mise à jour.")
 
 st.caption("Astuce : l'outil de mesure (icône règle) permet de mesurer distances et surfaces ; le mode plein écran facilite les captures.")
-st.page_link("app_pages/p09_effets.py", label="Étape suivante : effets du projet", icon="➡️")
+st.page_link("app_pages/p09_effets.py", label="Étape suivante : effets du projet", icon=":material/arrow_forward:")

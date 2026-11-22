@@ -5,7 +5,7 @@ from epa.reglementation import ADMIN, OFFICIEL, REFERENTIEL, SECONDAIRE, SOURCES
 from epa.ui import badge, hero
 
 hero("Cadre réglementaire et sources", "Textes applicables à l'étude préalable agricole, à la compensation collective et à "
-     "l'agrivoltaïsme, avec le statut de vérification de chaque élément et les sources des données.", "Référentiel")
+     "l'agrivoltaïsme, avec le statut de vérification de chaque élément et les sources des données.", "Livrables")
 
 st.markdown(
     f"{badge(OFFICIEL)} lu sur une source officielle &nbsp; {badge(ADMIN)} guide ou page d'un service de l'État &nbsp; "
@@ -25,6 +25,16 @@ for th in themes:
             st.markdown("**Sources**")
             for lbl, url in it.sources:
                 st.markdown(f"- [{lbl}]({url})")
+
+st.markdown("### Bibliographie des sources interrogées")
+from epa.sources import bibliographie  # noqa: E402
+
+refs = bibliographie(st.session_state.get("sources_utilisees", {}))
+if refs:
+    st.markdown("\n".join(f"- {r}" for r in refs))
+    st.download_button("Télécharger la bibliographie (texte)", "\n".join(refs).encode("utf-8"), "bibliographie.txt", "text/plain")
+else:
+    st.caption("Aucune source interrogée pour l'instant : la bibliographie se construit au fil des pages consultées.")
 
 st.markdown("### Sources des données")
 st.dataframe(pd.DataFrame(SOURCES_DONNEES, columns=["Donnée", "Producteur / diffuseur", "Accès", "Licence"]), hide_index=True,

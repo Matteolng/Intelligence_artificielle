@@ -1,4 +1,6 @@
 import streamlit as st
+
+from epa.sources import enregistrer
 from streamlit_folium import st_folium
 
 from epa import cartes, territoire as T
@@ -8,7 +10,7 @@ from epa.ui import hero, kpis, source, texte_auto
 from epa.analyse import texte_territoire
 
 hero("Territoire d'étude", "Sélectionnez la région, le(s) département(s) et la ou les intercommunalités composant le "
-     "territoire concerné par le projet. Vous pouvez ensuite ajouter ou retirer des communes.", "Étape 1 · Cadrage")
+     "territoire concerné par le projet. Vous pouvez ensuite ajouter ou retirer des communes.", "Étape 1 sur 4 : cadrage")
 
 try:
     regions = T.list_regions()
@@ -76,7 +78,7 @@ with st.expander("Ajuster la liste des communes (facultatif)"):
 
 nom = st.text_input("Nom du territoire d'étude", value=cfg.get("nom") or (" + ".join(epci_opts[e] for e in sel_epcis) if sel_epcis else ""))
 
-if st.button("✅ Valider le territoire d'étude", type="primary", disabled=not (sel_epcis or cfg.get("communes_ajoutees"))):
+if st.button("Valider le territoire d'étude", type="primary", disabled=not (sel_epcis or cfg.get("communes_ajoutees"))):
     with st.spinner("Chargement des contours communaux…"):
         try:
             t = T.build_territoire([{"code": e, "nom": epci_opts[e]} for e in sel_epcis], cfg.get("communes_ajoutees", []),
@@ -112,6 +114,7 @@ with c1:
     cartes.add_emprise(m, st.session_state.get("emprise"))
     cartes.finalize(m)
     st_folium(m, height=520, use_container_width=True, returned_objects=[], key="map_territoire")
+    enregistrer("geo")
     source("API Découpage administratif (geo.api.gouv.fr) ; fonds IGN Géoplateforme / OpenStreetMap.")
 with c2:
     tab = t.communes[["code", "nom", "codeEpci", "population", "surface_ha"]].copy()
@@ -120,4 +123,4 @@ with c2:
                  column_config={"Surface (ha)": st.column_config.NumberColumn(format="%.0f"), "Population": st.column_config.NumberColumn(format="%d")})
     st.download_button("Télécharger la liste (CSV)", tab.to_csv(index=False, sep=";").encode("utf-8-sig"), "communes_territoire.csv", "text/csv")
 
-st.page_link("app_pages/p02_projet.py", label="Étape suivante : décrire le projet et son emprise", icon="➡️")
+st.page_link("app_pages/p02_projet.py", label="Étape suivante : décrire le projet et son emprise", icon=":material/arrow_forward:")

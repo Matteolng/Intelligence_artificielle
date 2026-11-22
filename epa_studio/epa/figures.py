@@ -277,3 +277,33 @@ def carte_wms_perimetre(perimetre: gpd.GeoDataFrame, couche: str, titre: str, so
         lax.imshow(img)
         lax.axis("off")
     return _export(fig, titre, source, sous_titre)
+
+
+def evolutions_comparees(comp: pd.DataFrame) -> bytes | None:
+    """Barres horizontales : évolution 2010-2020 des exploitations et de la SAU, périmètre mis en évidence."""
+    cols = [("Évolution exploitations 2010-2020 (%)", "Nombre d'exploitations"), ("Évolution SAU 2010-2020 (%)", "Surface agricole utilisée")]
+    if comp is None or comp.empty or not any(c in comp for c, _ in cols):
+        return None
+    acc = branding_courant().couleur
+    lab = comp["Territoire"].tolist()
+    fig, axs = plt.subplots(1, 2, figsize=(10, 3.2), sharey=True)
+    fig.subplots_adjust(left=0.2, right=0.97, top=0.74, bottom=0.14, wspace=0.12)
+    for ax, (c, t) in zip(axs, cols):
+        v = pd.to_numeric(comp.get(c), errors="coerce")
+        y = list(range(len(lab)))[::-1]
+        colors = [acc] + ["#A1A1A6"] * (len(lab) - 1)
+        ax.barh(y, v.fillna(0), color=colors, height=0.56)
+        span = max(1.0, float(v.abs().max(skipna=True) or 1))
+        for yi, vi in zip(y, v):
+            txt = "non disponible" if pd.isna(vi) else (("+" if vi > 0 else "−" if vi < 0 else "") + f"{abs(vi):.1f}".replace(".", ",") + " %")
+            ax.text((vi if pd.notna(vi) else 0) + (span * 0.03 if (pd.isna(vi) or vi >= 0) else -span * 0.03), yi, txt,
+                    va="center", ha="left" if (pd.isna(vi) or vi >= 0) else "right", fontsize=7.5, color=TEXTE)
+        ax.axvline(0, color=TEXTE, lw=0.8)
+        ax.set_xlim(-span * 1.45, span * 1.45)
+        ax.set_yticks(y, lab, fontsize=8)
+        ax.set_xticks([])
+        for s in ("top", "right", "bottom", "left"):
+            ax.spines[s].set_visible(False)
+        ax.tick_params(axis="y", length=0)
+        ax.set_title(t, fontsize=9, fontweight="semibold", loc="left", color=TEXTE)
+    return _export(fig, "Évolution de l'agriculture entre 2010 et 2020", "Agreste, recensements agricoles 2010 et 2020, via l'Observatoire des territoires (ANCT)")

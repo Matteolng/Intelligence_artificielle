@@ -54,23 +54,27 @@ def test_parcours_complet(state):
     assert not at.exception, [e.message for e in at.exception]
     goto(at, "app_pages/p01_territoire.py")
     goto(at, "app_pages/p02_projet.py")
-    goto(at, "app_pages/p03_occupation.py", ["📥 Charger"])
+    goto(at, "app_pages/p03_occupation.py", ["Charger"])
     assert res(at, "rpg")["ind"]["Nombre de parcelles"] > 1000
-    goto(at, "app_pages/p04_exploitations.py", ["📥 Charger les données du RA 2020"])
+    goto(at, "app_pages/p04_exploitations.py", ["Charger les données du RA 2020"])
     assert res(at, "ra2020")["synth"][0]["Exploitations 2020"] > 0
-    goto(at, "app_pages/p04_exploitations.py", ["📥 Compter"])
-    goto(at, "app_pages/p05_filieres.py", ["📥 Rechercher"])
-    goto(at, "app_pages/p06_qualite.py", ["📥 Charger les aires SIQO"])
-    goto(at, "app_pages/p06_qualite.py", ["📥 Charger les opérateurs bio"])
-    goto(at, "app_pages/p07_foncier.py", ["📥 Charger les transactions"])
+    goto(at, "app_pages/p04_exploitations.py", ["Compter"])
+    goto(at, "app_pages/p05_filieres.py", ["Rechercher"])
+    goto(at, "app_pages/p06_qualite.py", ["Charger les aires SIQO"])
+    goto(at, "app_pages/p06_qualite.py", ["Charger les opérateurs bio"])
+    goto(at, "app_pages/p07_foncier.py", ["Charger les transactions"])
     goto(at, "app_pages/p08_atlas.py")
     goto(at, "app_pages/p09_effets.py")
     assert not res(at, "rpg_emprise")["gdf"].empty
     goto(at, "app_pages/p10_compensation.py")
     assert "montant_compensation_eur" in res(at, "compensation")
-    goto(at, "app_pages/p11_rapport.py", ["📄 Générer", "📊 Préparer"])
+    goto(at, "app_pages/p11_rapport.py", ["Générer", "Préparer"])
     assert res(at, "docx")[:2] == b"PK"
     assert res(at, "xlsx")[:2] == b"PK"
     (ROOT / "tests" / "_rapport_test.docx").write_bytes(res(at, "docx"))
     goto(at, "app_pages/p12_referentiel.py")
+    goto(at, "app_pages/p04b_chiffres_cles.py")
+    assert res(at, "chiffres_cles")["comp"].shape[0] == 3
+    goto(at, "app_pages/p13_figures.py")
+    goto(at, "app_pages/p14_reglages.py")
     goto(at, "app_pages/p00_accueil.py")

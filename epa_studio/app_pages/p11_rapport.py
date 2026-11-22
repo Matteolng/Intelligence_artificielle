@@ -11,12 +11,12 @@ from epa.config import APP_VERSION, FAMILLE_COLORS
 from epa.ui import hero, require_territoire, resultat, stocker
 
 hero("Rapport et exports", "Générez le rapport Word pré-rédigé (plan de l'article D. 112-1-19), l'export Excel de toutes les "
-     "données, et sauvegardez votre projet pour le reprendre plus tard.", "Étape 4 · Livrables")
+     "données, et sauvegardez votre projet pour le reprendre plus tard.", "Étape 4 sur 4 : livrables")
 
 # ---------------------------------------------------------------------------
 # Sauvegarde / chargement
 # ---------------------------------------------------------------------------
-with st.expander("💾 Sauvegarder ou charger un projet", expanded=st.session_state.get("territoire") is None):
+with st.expander("Sauvegarder ou charger un projet", expanded=st.session_state.get("territoire") is None):
     up = st.file_uploader("Charger un fichier projet (.json)", type=["json"])
     if up is not None and st.button("Restaurer ce projet"):
         data = json.loads(up.getvalue().decode("utf-8"))
@@ -86,9 +86,9 @@ cols = st.columns(4)
 for i, (lbl, ok, page) in enumerate(modules):
     with cols[i % 4]:
         if ok:
-            st.markdown(f"✅ {lbl}")
+            st.markdown(f"{lbl}")
         else:
-            st.page_link(f"app_pages/{page}", label=f"{lbl} (à calculer)", icon="⬜")
+            st.page_link(f"app_pages/{page}", label=f"{lbl} (à calculer)", icon=":material/arrow_forward:")
 
 opt_cartes = st.toggle("Inclure les cartes statiques (fond IGN) dans le rapport", value=True,
                        help="Génère des cartes PNG ; nécessite l'accès au service WMS de la Géoplateforme.")
@@ -107,6 +107,8 @@ def build_ctx() -> dict:
     ctx["controle_agrivoltaique"] = st.session_state.get("controle_agrivoltaique")
     ctx["mesures_erc"] = st.session_state.get("mesures_erc")
     ctx["couches_consultees"] = st.session_state.get("couches_atlas")
+    from epa.sources import bibliographie
+    ctx["bibliographie"] = bibliographie(st.session_state.get("sources_utilisees", {}))
     if opt_cartes:
         ctx["carte_localisation"] = cartes.carte_localisation(t.communes, emprise, f"Territoire d'étude – {t.nom}")
     ra = resultat("ra2020")
@@ -175,17 +177,17 @@ def build_ctx() -> dict:
 
 c1, c2 = st.columns(2)
 with c1:
-    if st.button("📄 Générer le rapport Word", type="primary", width="stretch"):
+    if st.button("Générer le rapport Word", type="primary", width="stretch"):
         with st.spinner("Génération des cartes et du document…"):
             ctx = build_ctx()
             docx = rapport.build_docx(ctx)
         stocker("docx", docx)
     docx = resultat("docx")
     if docx:
-        st.download_button("⬇️ Télécharger le rapport (.docx)", docx, f"EPA_etat_initial_{date.today().isoformat()}.docx",
+        st.download_button("Télécharger le rapport (.docx)", docx, f"EPA_etat_initial_{date.today().isoformat()}.docx",
                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", width="stretch")
 with c2:
-    if st.button("📊 Préparer l'export Excel", width="stretch"):
+    if st.button("Préparer l'export Excel", width="stretch"):
         tables = {"Communes": t.communes.drop(columns="geometry")}
         r = resultat("rpg")
         if r:
@@ -219,8 +221,8 @@ with c2:
         stocker("xlsx", rapport.build_xlsx(tables))
     x = resultat("xlsx")
     if x:
-        st.download_button("⬇️ Télécharger l'export (.xlsx)", x, f"EPA_donnees_{date.today().isoformat()}.xlsx",
+        st.download_button("Télécharger l'export (.xlsx)", x, f"EPA_donnees_{date.today().isoformat()}.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
 
 st.info("Le rapport est une **base de rédaction** : les passages en rouge « [À compléter par le chargé d'études] » signalent les "
-        "analyses qualitatives, enquêtes et justifications à apporter.", icon="✍️")
+        "analyses qualitatives, enquêtes et justifications à apporter.", icon=":material/edit_note:")

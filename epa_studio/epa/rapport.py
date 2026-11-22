@@ -419,6 +419,10 @@ def build_docx(ctx: dict) -> bytes:
     doc.add_heading("Annexes", level=1)
     doc.add_heading("A. Sources des données", level=2)
     add_table(doc, pd.DataFrame(SOURCES_DONNEES, columns=["Donnée", "Producteur / diffuseur", "Accès", "Licence"]), font_size=7)
+    if ctx.get("bibliographie"):
+        doc.add_heading("Bibliographie des sources interrogées", level=3)
+        for ref in ctx["bibliographie"]:
+            doc.add_paragraph(ref, style="List Bullet")
     doc.add_heading("B. Référentiel réglementaire et méthodologique", level=2)
     add_text(doc, "Statut de vérification de chaque élément au moment de la génération de l'outil (novembre 2026). Le texte consolidé "
                   "sur Légifrance fait foi.", italic=True)

@@ -7,7 +7,7 @@ from epa.reglementation import ZONES, test_assujettissement
 from epa.ui import badge, hero, kpis, require_territoire, source
 
 hero("Projet et emprise", "Décrivez le projet (agrivoltaïque, photovoltaïque au sol ou autre aménagement), importez ou dessinez son "
-     "emprise, puis vérifiez l'assujettissement à l'étude préalable agricole.", "Étape 1 · Cadrage")
+     "emprise, puis vérifiez l'assujettissement à l'étude préalable agricole.", "Étape 1 sur 4 : cadrage")
 require_territoire()
 t = st.session_state["territoire"]
 pj: P.Projet = st.session_state.setdefault("projet", P.Projet())
@@ -17,7 +17,7 @@ def _f(x):
     return None if x is None else float(x)
 
 
-tab1, tab2, tab3 = st.tabs(["📋 Caractéristiques du projet", "📐 Emprise", "⚖️ Assujettissement et critères"])
+tab1, tab2, tab3 = st.tabs(["Caractéristiques du projet", "Emprise", "Assujettissement et critères"])
 
 with tab1:
     with st.form("form_projet"):
@@ -131,4 +131,4 @@ with tab3:
     else:
         st.session_state.pop("controle_agrivoltaique", None)
 
-st.page_link("app_pages/p03_occupation.py", label="Étape suivante : occupation agricole du territoire (RPG)", icon="➡️")
+st.page_link("app_pages/p03_occupation.py", label="Étape suivante : occupation agricole du territoire (RPG)", icon=":material/arrow_forward:")
