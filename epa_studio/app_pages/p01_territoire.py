@@ -6,7 +6,7 @@ from streamlit_folium import st_folium
 from epa import cartes, territoire as T
 from epa.analyse import fnum
 from epa.http import DataSourceError
-from epa.ui import hero, kpis, source, texte_auto
+from epa.ui import hero, kpis, source, sources, texte_auto
 from epa.analyse import texte_territoire
 
 hero("Territoire d'étude", "Sélectionnez la région, le(s) département(s) et la ou les intercommunalités composant le "
@@ -20,6 +20,41 @@ except DataSourceError as e:
     st.stop()
 
 cfg = st.session_state.setdefault("territoire_cfg", {})
+
+# --- Proposition automatique à partir de l'emprise du projet -----------------------------------------------
+from epa import perimetre as PER  # noqa: E402
+from epa import projet as PJ  # noqa: E402
+
+with st.expander("Proposer le périmètre à partir de l'emprise du projet", expanded=st.session_state.get("territoire") is None):
+    emp = st.session_state.get("emprise")
+    if emp is None or emp.empty:
+        up_e = st.file_uploader("Emprise du projet (GeoJSON, shapefile zippé, GeoPackage, KML)",
+                                type=["geojson", "json", "zip", "gpkg", "kml"], key="emprise_terr")
+        if up_e is not None:
+            try:
+                emp = PJ.lire_emprise(up_e.name, up_e.getvalue())
+                st.session_state["emprise"] = emp
+                st.session_state["emprise_fictive"] = False
+            except Exception as e:  # format non reconnu : message clair
+                st.error(f"Emprise illisible : {e}")
+                emp = None
+    if emp is not None and not emp.empty:
+        st.caption(f"Emprise : {PJ.surface_ha(emp):.1f} ha".replace(".", ",") + (" (fictive, démonstration)" if st.session_state.get("emprise_fictive") else ""))
+        if st.button("Proposer le périmètre", type="primary", icon=":material/auto_awesome:"):
+            with st.spinner("Recherche des communes et intercommunalités concernées…"):
+                try:
+                    prop = PER.proposer(emp)
+                    t_new = T.build_territoire(prop["epcis"], prop["communes_hors_epci"], [], None)
+                except DataSourceError as e:
+                    st.error(str(e))
+                    st.stop()
+            st.session_state["territoire"] = t_new
+            st.session_state["communes_emprise"] = prop["communes_emprise"]
+            st.session_state["territoire_cfg"] = cfg = {
+                "region": t_new.code_region, "tous_deps": len(t_new.codes_departements) > 1, "departements": t_new.codes_departements,
+                "epcis": [e["code"] for e in prop["epcis"]], "communes_ajoutees": prop["communes_hors_epci"], "communes_retirees": [],
+                "nom": t_new.nom}
+            st.rerun()
 
 c1, c2 = st.columns([1, 2])
 with c1:
@@ -122,5 +157,34 @@ with c2:
     st.dataframe(tab, hide_index=True, width="stretch", height=520,
                  column_config={"Surface (ha)": st.column_config.NumberColumn(format="%.0f"), "Population": st.column_config.NumberColumn(format="%d")})
     st.download_button("Télécharger la liste (CSV)", tab.to_csv(index=False, sep=";").encode("utf-8-sig"), "communes_territoire.csv", "text/csv")
+
+
+# --- Indicateurs recalculés en direct et justification du périmètre ----------------------------------------
+from epa import agreste  # noqa: E402
+from epa.ui import tuile_comparee, tuiles, phrase  # noqa: E402
+
+codes_live = sorted((set(t.codes_communes) | set(cfg.get("communes_ajoutees", []))) - set(retirees or []))
+st.markdown("#### Le périmètre en chiffres")
+st.caption("Recalculé à chaque ajout ou retrait de commune, avant même de valider.")
+try:
+    ra_c = agreste.ra2020("commune")
+    s_live = agreste.synthese(ra_c[ra_c["codgeo"].astype(str).isin(codes_live)], "live")
+    tuiles([
+        tuile_comparee("Communes", {"Périmètre": float(len(codes_live))}, "", 0),
+        tuile_comparee("Exploitations en 2020", {"Périmètre": s_live["Exploitations 2020"]}, "", 0),
+        tuile_comparee("SAU en 2020", {"Périmètre": s_live["SAU 2020 (ha)"]}, "ha", 0),
+        tuile_comparee("Exploitations, évolution 2010-2020", {"Périmètre": s_live["Évolution exploitations 2010-2020 (%)"]}, "%", 1, signe=True),
+    ])
+    sources("ra2020")
+except DataSourceError as e:
+    st.warning(f"Recensement agricole indisponible pour le moment : {e}")
+try:
+    from epa.otex import otex_communes
+    otx = otex_communes()
+except DataSourceError:
+    otx = None
+phrase(PER.texte_justification(t.communes[t.communes["code"].isin(codes_live)], t.epcis,
+                               st.session_state.get("communes_emprise", []),
+                               ajoutees=cfg.get("communes_ajoutees"), retirees=retirees, otex=otx))
 
 st.page_link("app_pages/p02_projet.py", label="Étape suivante : décrire le projet et son emprise", icon=":material/arrow_forward:")
