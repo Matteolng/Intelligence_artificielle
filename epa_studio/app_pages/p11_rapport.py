@@ -16,48 +16,25 @@ hero("Rapport et exports", "Générez le rapport Word pré-rédigé (plan de l'a
 # ---------------------------------------------------------------------------
 # Sauvegarde / chargement
 # ---------------------------------------------------------------------------
-with st.expander("Sauvegarder ou charger un projet", expanded=st.session_state.get("territoire") is None):
+with st.expander("Sauvegarder, partager ou charger un projet", expanded=st.session_state.get("territoire") is None):
+    from epa import bibliotheque as BIB
+
     up = st.file_uploader("Charger un fichier projet (.json)", type=["json"])
     if up is not None and st.button("Restaurer ce projet"):
-        data = json.loads(up.getvalue().decode("utf-8"))
-        cfg = data.get("territoire_cfg", {})
-        terr = data.get("territoire", {})
         with st.spinner("Reconstruction du territoire…"):
-            st.session_state["territoire"] = T.build_territoire(terr.get("epcis", []), cfg.get("communes_ajoutees", []),
-                                                                cfg.get("communes_retirees", []), terr.get("nom"))
-        st.session_state["territoire_cfg"] = cfg
-        if data.get("projet"):
-            st.session_state["projet"] = P.Projet(**data["projet"])
-        st.session_state["emprise"] = P.emprise_from_geojson(data.get("emprise"))
-        for k in ("assuj_cfg", "mesures_choix", "mesures_autres", "couches_atlas", "source_pb"):
-            if k in data:
-                st.session_state[k] = data[k]
-        if data.get("comp_params"):
-            st.session_state["comp_params"] = Parametres(**data["comp_params"])
-        if data.get("pb_table"):
-            st.session_state["pb_table"] = pd.DataFrame(data["pb_table"])
-        if data.get("effets"):
-            st.session_state["effets"] = pd.DataFrame(data["effets"])
+            BIB.restaurer(json.loads(up.getvalue().decode("utf-8")), st.session_state)
         st.success("Projet restauré. Relancez les modules de calcul (les données sont en cache).")
     if st.session_state.get("territoire") is not None:
-        t0 = st.session_state["territoire"]
-        save = {
-            "version": APP_VERSION,
-            "date": date.today().isoformat(),
-            "territoire": T.territoire_to_dict(t0),
-            "territoire_cfg": st.session_state.get("territoire_cfg", {}),
-            "projet": st.session_state["projet"].to_dict() if st.session_state.get("projet") else None,
-            "emprise": P.emprise_to_geojson(st.session_state.get("emprise")),
-            "assuj_cfg": st.session_state.get("assuj_cfg"),
-            "mesures_choix": st.session_state.get("mesures_choix", []),
-            "mesures_autres": st.session_state.get("mesures_autres", ""),
-            "couches_atlas": st.session_state.get("couches_atlas", []),
-            "source_pb": st.session_state.get("source_pb", ""),
-            "comp_params": asdict(st.session_state["comp_params"]) if st.session_state.get("comp_params") else None,
-            "pb_table": st.session_state["pb_table"].to_dict(orient="records") if st.session_state.get("pb_table") is not None else None,
-            "effets": st.session_state["effets"].to_dict(orient="records") if st.session_state.get("effets") is not None else None,
-        }
-        st.download_button("Télécharger le fichier projet (.json)", json.dumps(save, ensure_ascii=False, indent=1, default=str),
+        c1, c2 = st.columns(2)
+        if c1.button("Enregistrer dans la bibliothèque et obtenir un lien", type="primary", icon=":material/link:"):
+            pid = BIB.enregistrer(st.session_state)
+            st.session_state["lien_projet"] = pid
+        if st.session_state.get("lien_projet"):
+            base = str(st.context.url or "").split("?")[0]
+            st.code(f"{base}?projet={st.session_state['lien_projet']}", language=None)
+            st.caption("Ce lien ouvre le projet pour toute personne qui utilise cette même instance d'EPA Studio.")
+        c2.download_button("Télécharger le fichier projet (.json)",
+                           json.dumps(BIB.serialiser(st.session_state), ensure_ascii=False, indent=1, default=str),
                            f"projet_epa_{date.today().isoformat()}.json", "application/json")
 
 require_territoire()

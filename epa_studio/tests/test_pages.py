@@ -77,4 +77,5 @@ def test_parcours_complet(state):
     assert res(at, "chiffres_cles")["comp"].shape[0] == 4
     goto(at, "app_pages/p13_figures.py")
     goto(at, "app_pages/p14_reglages.py")
+    goto(at, "app_pages/p15_bibliotheque.py")
     goto(at, "app_pages/p00_accueil.py")

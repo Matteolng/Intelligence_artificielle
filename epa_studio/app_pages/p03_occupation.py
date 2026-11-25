@@ -5,7 +5,7 @@ import streamlit as st
 from epa.sources import enregistrer
 from streamlit_folium import st_folium
 
-from epa import cartes, rpg
+from epa import bibliotheque, cartes, rpg
 from epa.analyse import fnum, texte_rpg
 from epa.config import FAMILLE_COLORS, RPG_LAYERS
 from epa.http import DataSourceError
@@ -28,7 +28,7 @@ if res is not None and res["annee"] != annee:
 if lancer:
     bar = st.progress(0.0, text="Préparation…")
     try:
-        g = rpg.rpg_territoire(RPG_LAYERS[annee], t.communes, progress=progress_callback(bar))
+        g = bibliotheque.rpg_territoire(RPG_LAYERS[annee], annee.split(' ')[0], t, progress=progress_callback(bar))
     except DataSourceError as e:
         st.error(f"Le service WFS de la Géoplateforme n'a pas répondu : {e}")
         st.stop()
@@ -132,7 +132,7 @@ with tab4:
     if st.button("Comparer"):
         bar = st.progress(0.0, text="Téléchargement…")
         try:
-            g2 = rpg.rpg_territoire(RPG_LAYERS[ref], t.communes, progress=progress_callback(bar))
+            g2 = bibliotheque.rpg_territoire(RPG_LAYERS[ref], ref.split(' ')[0], t, progress=progress_callback(bar))
         except DataSourceError as e:
             st.error(str(e))
             st.stop()
