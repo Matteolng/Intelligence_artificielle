@@ -116,9 +116,10 @@ bloc("sols", "Sols dominants", "Carte harmonisée des sols dominants (Référent
                                          "INRAE – Gis Sol, sols dominants de France métropolitaine ; IGN, Géoplateforme",
                                          "Référentiels régionaux pédologiques au 1/250 000"), ("sols", "plan_ign"))
 st.markdown("#### Réserve utile et profondeur des sols")
-manquant("Réserve utile et profondeur des sols", "INRAE / Gis Sol",
-         "Ces couches ne sont pas diffusées par le service WMS de la Géoplateforme interrogé par l'application "
-         "(vérifié dans ses GetCapabilities). Joignez vos propres cartes au rapport.")
+manquant("Réserve utile et profondeur des sols", "INRAE – Gis Sol",
+         "Non intégrées à ce stade. Le Gis Sol publie une « Carte de la réserve utile en eau issue de la Base de données "
+         "géographique des sols de France » (1/1 000 000, doi:10.15454/JPB9RB), diffusée par son infrastructure "
+         "geodata.inrae.fr : son intégration nécessite d'autoriser ce site dans l'environnement réseau.")
 st.divider()
 
 # 5. OTEX
