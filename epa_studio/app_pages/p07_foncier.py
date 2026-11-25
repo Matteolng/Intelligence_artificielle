@@ -17,6 +17,41 @@ t = st.session_state["territoire"]
 if set(t.codes_departements) & DVF_DEPARTEMENTS_NON_COUVERTS:
     st.warning("DVF ne couvre pas l'Alsace (67, 68), la Moselle (57) ni Mayotte : les communes de ces départements sont exclues.")
 
+# --- Barème indicatif de la valeur vénale (décision annuelle au Journal officiel) ----------------------------
+from epa import bareme as BAR  # noqa: E402
+
+st.markdown("### Barème officiel de la valeur vénale")
+try:
+    pra = BAR.pra_du_territoire(t.communes)
+except DataSourceError as e:
+    pra = None
+    st.warning(f"Petites régions agricoles indisponibles (OFB) : {e}")
+if pra is not None and not pra.empty:
+    st.caption("Petites régions agricoles du territoire (référentiel du ministère de l'Agriculture 2017, diffusé par l'OFB) : "
+               + ", ".join(f"{r.nom} ({r.part_pct:.0f} %)" for r in pra.itertuples()))
+up_b = st.file_uploader("Décision du barème (page Légifrance enregistrée en HTML, ou texte copié)", type=["html", "htm", "txt", "md"],
+                        key="bareme_up", help="Légifrance n'autorise pas la lecture automatique : enregistrez la page de la décision puis déposez-la ici.")
+st.markdown(f"Dernière décision connue : [décision du 10 août 2026, barème 2025]({BAR.DECISION_2025}) (Journal officiel).")
+if up_b is not None:
+    try:
+        stocker("bareme", BAR.lire_bareme(up_b.getvalue()))
+    except DataSourceError as e:
+        st.error(str(e))
+bar_df = resultat("bareme")
+if bar_df is not None and pra is not None and not pra.empty:
+    corr = BAR.correspondances(pra, bar_df)
+    if corr.empty:
+        st.warning("Aucune ligne du barème ne correspond par son nom aux petites régions agricoles du territoire : consultez le tableau du département.")
+        st.dataframe(bar_df[bar_df["departement"].isin(pra["departement"].unique())], hide_index=True)
+    else:
+        st.dataframe(corr, hide_index=True, column_config={c: st.column_config.NumberColumn(format="%.0f") for c in corr.columns if "€" in c})
+        st.caption("Correspondance proposée par le nom de la petite région agricole : à vérifier sur la décision.")
+    source("Décision portant fixation du barème indicatif de la valeur vénale moyenne des terres agricoles (Journal officiel), "
+           "fichier déposé par l'utilisateur ; petites régions agricoles : ministère de l'Agriculture (2017), via l'OFB.")
+elif bar_df is None:
+    st.caption("Barème non chargé : déposez la décision ci-dessus pour afficher les valeurs des petites régions agricoles du territoire.")
+
+st.markdown("### Transactions observées (DVF)")
 c1, c2, c3 = st.columns(3)
 annee_min = c1.number_input("Mutations depuis l'année", min_value=2014, max_value=2026, value=2014, step=1)
 types = c2.multiselect("Types de biens", list(DVF_TYPES_AGRICOLES), default=list(DVF_TYPES_AGRICOLES), format_func=lambda c: DVF_TYPES_AGRICOLES[c], placeholder="Choisir")
