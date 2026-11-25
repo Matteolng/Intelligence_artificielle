@@ -183,10 +183,23 @@ def _styles(doc: Document) -> None:
 # Rapport
 # ---------------------------------------------------------------------------
 
-def build_docx(ctx: dict) -> bytes:
-    """ctx : dictionnaire des résultats (cf. app_pages/rapport.py)."""
-    doc = Document()
-    _styles(doc)
+def _document(gabarit: bytes | None) -> Document:
+    """Document vierge, ou gabarit Word du bureau d'études (styles, en-têtes et pieds conservés, contenu retiré)."""
+    if not gabarit:
+        doc = Document()
+        _styles(doc)
+        return doc
+    doc = Document(io.BytesIO(gabarit))
+    body = doc.element.body
+    for el in list(body):
+        if not el.tag.endswith("sectPr"):
+            body.remove(el)
+    return doc
+
+
+def build_docx(ctx: dict, gabarit: bytes | None = None) -> bytes:
+    """ctx : dictionnaire des résultats (cf. app_pages/rapport.py). `gabarit` : .docx du bureau d'études (facultatif)."""
+    doc = _document(gabarit)
     projet = ctx.get("projet") or {}
     terr = ctx.get("territoire_resume") or {}
 

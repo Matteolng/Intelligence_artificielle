@@ -157,7 +157,9 @@ with c1:
     if st.button("Générer le rapport Word", type="primary", width="stretch"):
         with st.spinner("Génération des cartes et du document…"):
             ctx = build_ctx()
-            docx = rapport.build_docx(ctx)
+            from epa.branding import branding_courant
+            _g = branding_courant().gabarit_docx
+            docx = rapport.build_docx(ctx, gabarit=_g.read_bytes() if _g else None)
         stocker("docx", docx)
     docx = resultat("docx")
     if docx:
@@ -200,6 +202,53 @@ with c2:
     if x:
         st.download_button("Télécharger l'export (.xlsx)", x, f"EPA_donnees_{date.today().isoformat()}.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", width="stretch")
+
+st.markdown("#### Diapositives")
+if st.button("Préparer les diapositives (PowerPoint)", icon=":material/slideshow:"):
+    from pathlib import Path as _P
+
+    from epa import diapos, theme
+    from epa.branding import branding_courant
+    from epa.sources import bibliographie
+    from epa.ui import fmt_val
+
+    b = branding_courant()
+    cc = resultat("chiffres_cles")
+    ech, phr = [], []
+    if cc:
+        from epa.gabarits import phrase_evolution
+        noms = [t.nom, "Département", "Région", "France"]
+        rows = [cc["comp"].iloc[i].to_dict() for i in range(len(cc["comp"]))]
+        labels = ["Périmètre", "Département", "Région", "France"][:len(rows)] if len(rows) == 4 else ["Périmètre", "Département", "France"]
+        for lab, row in zip(labels, rows):
+            ech.append({"label": lab, "nom": row["Territoire"] if lab != "Périmètre" else t.nom,
+                        "exp": fmt_val(row.get("Exploitations 2020"), "", 0),
+                        "evol_exp": fmt_val(row.get("Évolution exploitations 2010-2020 (%)"), "%", 1, signe=True),
+                        "sau": fmt_val(row.get("SAU 2020 (ha)"), "ha", 0),
+                        "evol_sau": fmt_val(row.get("Évolution SAU 2010-2020 (%)"), "%", 1, signe=True)})
+        if len(rows) == 4:
+            for col, suj in (("Évolution exploitations 2010-2020 (%)", "Le nombre d'exploitations"), ("Évolution SAU 2010-2020 (%)", "La surface agricole utilisée")):
+                phr.append(phrase_evolution(suj, False, rows[0].get(col), rows[1].get(col), rows[3].get(col), v_reg=rows[2].get(col), avec_region=True))
+    figs = []
+    noms_fig = {"localisation": "Localisation du projet", "otex": "Orientation technico-économique des communes", "clc": "Occupation du sol",
+                "sols": "Sols dominants"}
+    for k, v in st.session_state.items():
+        if str(k).startswith("res::fig::") and v and v.get("val"):
+            cle = str(k)[len("res::fig::"):]
+            figs.append((noms_fig.get(cle, "Cultures déclarées sur le site" if cle.startswith("rpg") else cle), v["val"],
+                         "voir la figure (titre et source intégrés)"))
+    url = theme.photo_territoire(t.communes)
+    photo = theme.STATIC / url[len(theme.URL) + 1:] if url else None
+    pptx = diapos.build_pptx({"titre": (pj.nom if pj else "Projet"), "territoire": t.nom, "photo": photo, "echelles": ech,
+                              "phrases": phr, "figures": figs,
+                              "bibliographie": bibliographie(st.session_state.get("sources_utilisees", {}))},
+                             b.nom, b.couleur, police_titres=b.police_titres, police_texte=b.police_texte,
+                             gabarit=b.gabarit_pptx.read_bytes() if b.gabarit_pptx else None)
+    stocker("pptx", pptx)
+if resultat("pptx"):
+    st.download_button("Télécharger les diapositives (.pptx)", resultat("pptx"), f"EPA_diapositives_{date.today().isoformat()}.pptx",
+                       "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+    st.caption("Diapositives générées à partir des chiffres clés et des figures déjà produites (pages Chiffres clés et Figures).")
 
 st.info("Le rapport est une **base de rédaction** : les passages en rouge « [À compléter par le chargé d'études] » signalent les "
         "analyses qualitatives, enquêtes et justifications à apporter.", icon=":material/edit_note:")

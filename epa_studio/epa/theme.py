@@ -25,11 +25,19 @@ ETOILE = ('<svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><p
           '7 14 6.4 9 5 7.6 0 7 5 6.4 6.4 5 7 0Z" fill="currentColor"/></svg>')
 
 
-def css(accent: str) -> str:
+def css(accent: str, police_titres: str = "Cormorant Garamond", police_texte: str = "Inter") -> str:
+    imp = ""
+    if police_titres != "Cormorant Garamond" or police_texte != "Inter":
+        fam = "&".join("family=" + p.replace(" ", "+") + ":ital,wght@0,300..700;1,300..700" for p in {police_titres, police_texte})
+        imp = f'@import url("https://fonts.googleapis.com/css2?{fam}&display=swap");'
+    serif = f"'{police_titres}', Georgia, serif"
+    sans = f"'{police_texte}', system-ui, sans-serif"
     return f"""
 <style>
+{imp}
 :root {{ --accent:{accent}; --nuit:{NUIT}; --nuit2:{NUIT2}; --olive:{OLIVE}; --creme:{CREME}; --clair:{CLAIR};
-        --texte:{TEXTE}; --second:{SECOND}; --serif:{SERIF}; --sans:{SANS}; }}
+        --texte:{TEXTE}; --second:{SECOND}; --serif:{serif}; --sans:{sans}; }}
+body, .stApp, .stMarkdown, p, li, label {{ font-family: var(--sans); }}
 @keyframes epaRise {{ from {{opacity:0; transform:translateY(22px)}} to {{opacity:1; transform:none}} }}
 @keyframes epaZoom {{ from {{transform:scale(1.03)}} to {{transform:scale(1.13)}} }}
 @keyframes epaPan {{ from {{background-position:0% 30%}} to {{background-position:100% 70%}} }}

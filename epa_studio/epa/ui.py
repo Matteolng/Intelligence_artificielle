@@ -18,7 +18,8 @@ GRIS = {"fond": "#F5F5F7", "surface": "#FFFFFF", "texte": "#1D1D1F", "second": "
 def setup_page() -> None:
     from .theme import css
 
-    st.markdown(css(branding_courant().couleur), unsafe_allow_html=True)
+    b = branding_courant()
+    st.markdown(css(b.couleur, b.police_titres, b.police_texte), unsafe_allow_html=True)
 
 
 def entete(etape: str | None, titre: str, intro: str = "", italique: str = "") -> None:

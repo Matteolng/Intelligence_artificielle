@@ -12,11 +12,66 @@ FICHIER = Path(__file__).resolve().parents[1] / "branding.toml"
 _HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
+POLICES_TITRES = ("Cormorant Garamond", "Playfair Display", "Libre Baskerville", "Fraunces", "Inter")
+POLICES_TEXTE = ("Inter", "Source Sans 3", "Lato")
+
+
 @dataclass(frozen=True)
 class Branding:
     nom: str = DEFAUT_NOM
     couleur: str = DEFAUT_COULEUR
     logo: Path | None = None
+    police_titres: str = POLICES_TITRES[0]
+    police_texte: str = POLICES_TEXTE[0]
+    gabarit_docx: Path | None = None
+    gabarit_pptx: Path | None = None
+
+
+def dossier_marque() -> Path:
+    """Fichiers de marque partagés par l'instance (logo, gabarits, réglages) : dans la bibliothèque."""
+    from .bibliotheque import LIB
+
+    return LIB / "marque"
+
+
+def enregistrer_marque(reglages: dict, fichiers: dict[str, tuple[str, bytes]] | None = None) -> None:
+    """Enregistre les réglages (nom, couleur, polices) et les fichiers (logo, gabarit_docx, gabarit_pptx) pour l'instance."""
+    import json
+
+    d = dossier_marque()
+    d.mkdir(parents=True, exist_ok=True)
+    data = {k: v for k, v in reglages.items() if k in ("nom", "couleur", "police_titres", "police_texte") and v}
+    if "couleur" in data:
+        data["couleur"] = couleur_valide(data["couleur"])
+    for cle, (nom, contenu) in (fichiers or {}).items():
+        ext = Path(nom).suffix.lower()
+        if cle == "logo" and ext not in (".png", ".jpg", ".jpeg", ".svg"):
+            raise ValueError("Logo : formats acceptés PNG, JPG ou SVG.")
+        if cle == "gabarit_docx" and ext not in (".docx", ".dotx"):
+            raise ValueError("Gabarit Word : fichier .docx ou .dotx attendu.")
+        if cle == "gabarit_pptx" and ext not in (".pptx", ".potx"):
+            raise ValueError("Gabarit PowerPoint : fichier .pptx ou .potx attendu.")
+        for ancien in d.glob(f"{cle}.*"):
+            ancien.unlink()
+        (d / f"{cle}{ext}").write_bytes(contenu)
+    (d / "marque.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+
+def _marque_instance(b: "Branding") -> "Branding":
+    import json
+
+    d = dossier_marque()
+    if not d.exists():
+        return b
+    try:
+        data = json.loads((d / "marque.json").read_text(encoding="utf-8")) if (d / "marque.json").exists() else {}
+    except (OSError, ValueError):
+        data = {}
+    fichier = lambda cle: next(iter(sorted(d.glob(f"{cle}.*"))), None)  # noqa: E731
+    return replace(b, nom=data.get("nom") or b.nom, couleur=couleur_valide(data.get("couleur") or b.couleur),
+                   police_titres=data.get("police_titres") if data.get("police_titres") in POLICES_TITRES else b.police_titres,
+                   police_texte=data.get("police_texte") if data.get("police_texte") in POLICES_TEXTE else b.police_texte,
+                   logo=fichier("logo") or b.logo, gabarit_docx=fichier("gabarit_docx"), gabarit_pptx=fichier("gabarit_pptx"))
 
 
 def couleur_valide(c: str | None) -> str:
@@ -42,8 +97,8 @@ def charger_branding(path: Path | None = None) -> Branding:
 
 
 def branding_courant(state=None) -> Branding:
-    """Réglages de la session (page Réglages) prioritaires sur le fichier."""
-    b = charger_branding()
+    """Réglages de la session > réglages enregistrés pour l'instance > fichier branding.toml."""
+    b = _marque_instance(charger_branding())
     if state is None:
         try:
             import streamlit as st

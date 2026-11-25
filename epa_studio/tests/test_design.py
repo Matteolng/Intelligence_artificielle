@@ -143,3 +143,15 @@ def test_comparaison_quatre_lignes_et_region_absente():
     assert list(t["Territoire"]) == ["Périmètre d'étude", "Département (32)", "Région (76)", C.LIGNE_FRANCE]
     t2 = C.comparaison(com, dep, ["1"], "32", df_reg=reg, code_reg="99")
     assert t2.loc[2, "Territoire"] == "Région (99)" and pd.isna(t2.loc[2].get("Exploitations 2020"))
+
+
+def test_marque_instance(tmp_path, monkeypatch):
+    from epa import bibliotheque
+    monkeypatch.setattr(bibliotheque, "LIB", tmp_path)
+    B.enregistrer_marque({"nom": "Bureau X", "couleur": "#123456", "police_titres": "Playfair Display"},
+                         {"logo": ("logo.png", b"\x89PNG"), "gabarit_pptx": ("charte.pptx", b"PK")})
+    b = B.branding_courant({})
+    assert (b.nom, b.couleur, b.police_titres) == ("Bureau X", "#123456", "Playfair Display")
+    assert b.logo.name == "logo.png" and b.gabarit_pptx.name == "gabarit_pptx.pptx" and b.gabarit_docx is None
+    with pytest.raises(ValueError):
+        B.enregistrer_marque({}, {"logo": ("virus.exe", b"MZ")})

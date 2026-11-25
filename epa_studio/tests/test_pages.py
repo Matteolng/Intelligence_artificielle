@@ -68,9 +68,10 @@ def test_parcours_complet(state):
     assert not res(at, "rpg_emprise")["gdf"].empty
     goto(at, "app_pages/p10_compensation.py")
     assert "montant_compensation_eur" in res(at, "compensation")
-    goto(at, "app_pages/p11_rapport.py", ["Générer", "Préparer"])
+    goto(at, "app_pages/p11_rapport.py", ["Générer", "Préparer l", "Préparer les diapositives"])
     assert res(at, "docx")[:2] == b"PK"
     assert res(at, "xlsx")[:2] == b"PK"
+    assert res(at, "pptx")[:2] == b"PK"
     (ROOT / "tests" / "_rapport_test.docx").write_bytes(res(at, "docx"))
     goto(at, "app_pages/p12_referentiel.py")
     goto(at, "app_pages/p04b_chiffres_cles.py")
