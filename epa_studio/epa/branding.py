@@ -23,19 +23,17 @@ class Branding:
     logo: Path | None = None
     police_titres: str = POLICES_TITRES[0]
     police_texte: str = POLICES_TEXTE[0]
-    gabarit_docx: Path | None = None
-    gabarit_pptx: Path | None = None
 
 
 def dossier_marque() -> Path:
-    """Fichiers de marque partagés par l'instance (logo, gabarits, réglages) : dans la bibliothèque."""
+    """Fichiers de marque partagés par l'instance (logo, réglages) : dans la bibliothèque."""
     from .bibliotheque import LIB
 
     return LIB / "marque"
 
 
 def enregistrer_marque(reglages: dict, fichiers: dict[str, tuple[str, bytes]] | None = None) -> None:
-    """Enregistre les réglages (nom, couleur, polices) et les fichiers (logo, gabarit_docx, gabarit_pptx) pour l'instance."""
+    """Enregistre les réglages (nom, couleur, polices) et le logo pour l'instance."""
     import json
 
     d = dossier_marque()
@@ -45,12 +43,10 @@ def enregistrer_marque(reglages: dict, fichiers: dict[str, tuple[str, bytes]] | 
         data["couleur"] = couleur_valide(data["couleur"])
     for cle, (nom, contenu) in (fichiers or {}).items():
         ext = Path(nom).suffix.lower()
-        if cle == "logo" and ext not in (".png", ".jpg", ".jpeg", ".svg"):
+        if cle != "logo":
+            raise ValueError(f"Fichier de marque inconnu : {cle}")
+        if ext not in (".png", ".jpg", ".jpeg", ".svg"):
             raise ValueError("Logo : formats acceptés PNG, JPG ou SVG.")
-        if cle == "gabarit_docx" and ext not in (".docx", ".dotx"):
-            raise ValueError("Gabarit Word : fichier .docx ou .dotx attendu.")
-        if cle == "gabarit_pptx" and ext not in (".pptx", ".potx"):
-            raise ValueError("Gabarit PowerPoint : fichier .pptx ou .potx attendu.")
         for ancien in d.glob(f"{cle}.*"):
             ancien.unlink()
         (d / f"{cle}{ext}").write_bytes(contenu)
@@ -71,7 +67,7 @@ def _marque_instance(b: "Branding") -> "Branding":
     return replace(b, nom=data.get("nom") or b.nom, couleur=couleur_valide(data.get("couleur") or b.couleur),
                    police_titres=data.get("police_titres") if data.get("police_titres") in POLICES_TITRES else b.police_titres,
                    police_texte=data.get("police_texte") if data.get("police_texte") in POLICES_TEXTE else b.police_texte,
-                   logo=fichier("logo") or b.logo, gabarit_docx=fichier("gabarit_docx"), gabarit_pptx=fichier("gabarit_pptx"))
+                   logo=fichier("logo") or b.logo)
 
 
 def couleur_valide(c: str | None) -> str:

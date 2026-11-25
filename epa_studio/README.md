@@ -7,7 +7,7 @@ pêche maritime – pour les bureaux d'études agricoles, avec un volet dédié 
 On choisit la région, le ou les départements, une ou plusieurs intercommunalités (EPCI), on ajuste les communes,
 on importe (ou dessine) l'emprise du projet : l'application télécharge les données publiques, produit cartes,
 tableaux, indicateurs et synthèses rédigées, calcule la compensation collective selon des paramètres
-départementaux, et génère un **rapport Word** structuré selon l'article D. 112-1-19 ainsi qu'un **export Excel**.
+départementaux, et produit les **données, tableaux et figures** de l'étude (PNG 300 dpi, classeur **Excel**, bibliographie), y compris un **suivi satellite Sentinel-2** des parcelles de l'emprise.
 
 ---
 
@@ -38,7 +38,7 @@ départementaux, et génère un **rapport Word** structuré selon l'article D. 1
 | | **Atlas cartographique** | 27 couches WMS de la Géoplateforme : RPG, bio, prairies, AOC viticoles, ZAP, sols INRAE, CLC, OCS GE, cadastre, PLU/GPU, SUP, Natura 2000, ZNIEFF, PNR, APB, ZRE, BCAE, potentiel solaire au sol, friches, ZAER, capacités S3REnR, pentes… | 2° contexte |
 | 3 · Impacts | **Effets du projet et ERC** | Cultures et surfaces RPG dans l'emprise, part dans le territoire, grille des effets, mesures d'évitement et de réduction | 3° et 4° |
 | | **Compensation collective** | Produit brut par culture, surfaces soustraites, baisse de rendement ou changement de production (agrivoltaïsme), coefficient aval, durée de reconstitution, ratio d'investissement, analyse de sensibilité | 3° évaluation financière, 5° compensation |
-| 4 · Livrables | **Rapport et exports** | Rapport **Word** pré-rédigé (cartes IGN, graphiques, tableaux, sources, référentiel réglementaire, limites), export **Excel** de toutes les tables, **sauvegarde / reprise** du projet (.json) | — |
+| 4 · Livrables | **Exports** | Classeur **Excel** de toutes les tables, archive **ZIP** des figures (PNG 300 dpi, animation NDVI), bibliographie, **sauvegarde / partage** du projet | — |
 | | **Cadre réglementaire et sources** | Textes et doctrines avec **statut de vérification** (texte officiel / source administrative / source secondaire à vérifier) et liens | — |
 
 Chaque page affiche ses **sources** ; les **synthèses rédigées automatiquement** ne contiennent que des valeurs
@@ -135,7 +135,8 @@ epa_studio/
 │   ├── reglementation.py   # référentiel réglementaire sourcé + test d'assujettissement
 │   ├── analyse.py          # synthèses rédigées automatiquement (formats français)
 │   ├── cartes.py           # cartes Folium interactives et cartes statiques pour le rapport
-│   ├── rapport.py          # rapport Word (python-docx) et export Excel
+│   ├── exports.py          # export Excel et archive des figures
+│   ├── teledetection.py    # indices Sentinel-2 (NDVI, BSI, NDMI, MNDWI) par parcelle de l'emprise
 │   ├── ui.py               # composants d'interface et état de session
 │   └── data/               # nomenclature NAF (INSEE) et codes cultures du RPG
 └── tests/                  # tests unitaires et parcours complet (AppTest)

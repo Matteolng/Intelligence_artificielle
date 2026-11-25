@@ -77,8 +77,8 @@ a.markdown("#### Chiffres clés à quatre échelles\nPérimètre, département, 
            "phrase de synthèse qui va avec.")
 b_.markdown("#### Figures prêtes à poser\nLocalisation, cultures RPG année par année, occupation du sol, sols, OTEX. "
             "PNG 300 dpi avec titre, source et année.")
-c.markdown("#### Livrables à vos couleurs\nRapport Word, diapositives PowerPoint et export Excel, avec la bibliographie "
-           "des sources consultées.")
+c.markdown("#### Le site vu par satellite\nCourbes de végétation, sol nu et humidité de chaque parcelle de l'emprise "
+           "(Sentinel-2), comparées aux parcelles voisines de même culture.")
 
 st.markdown(
     '<div class="epa-nuit"><h2 style="margin:0">Le parcours, <em>étape par étape</em></h2>'
@@ -86,7 +86,7 @@ st.markdown(
         ("un", "Cadrage", "Périmètre proposé à partir de l'emprise, ajustable, recalculé en direct."),
         ("deux", "État initial", "Occupation, exploitations, filières, qualité, foncier et atlas, aux quatre échelles."),
         ("trois", "Impacts", "Cultures touchées, mesures ERC, compensation collective."),
-        ("quatre", "Livrables", "Figures, rapport Word, diapositives, export Excel et bibliographie."),
+        ("quatre", "Livrables", "Figures PNG 300 dpi, classeur Excel de toutes les données et bibliographie."),
     ]) + "</div>",
     unsafe_allow_html=True,
 )

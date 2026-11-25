@@ -16,6 +16,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 from PIL import Image  # noqa: E402
@@ -325,3 +326,91 @@ def evolutions_comparees(comp: pd.DataFrame) -> bytes | None:
         ax.tick_params(axis="y", length=0)
         ax.set_title(t, fontsize=9, fontweight="semibold", loc="left", color=TEXTE)
     return _export(fig, "Évolution de l'agriculture entre 2010 et 2020", "Agreste, recensements agricoles 2010 et 2020, via l'Observatoire des territoires (ANCT)")
+
+
+# ---------------------------------------------------------------------------
+# Télédétection : animation NDVI et séries temporelles (Sentinel-2)
+# ---------------------------------------------------------------------------
+
+def _rampe_ndvi():
+    from matplotlib.colors import LinearSegmentedColormap
+
+    return LinearSegmentedColormap.from_list("ndvi", ["#F4ECDF", "#DCE5BC", "#9DB06A", "#56653E", "#1F3A1A"])
+
+
+def animation_ndvi(frames: list, emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFrame | None, bbox4326, max_images: int = 40,
+                   largeur_min: int = 640) -> bytes | None:
+    """GIF animé du NDVI de l'emprise, une image par date sans nuage (nuages en gris), contours des parcelles."""
+    from PIL import ImageDraw, ImageFont
+
+    frames = [(d, a) for d, a in frames if a is not None and np.isfinite(np.asarray(a, dtype="float32")).mean() > 0.3]
+    if not frames:
+        return None
+    if len(frames) > max_images:
+        pas = len(frames) / max_images
+        frames = [frames[int(i * pas)] for i in range(max_images)]
+    cmap = _rampe_ndvi()
+    h, w = np.asarray(frames[0][1]).shape
+    echelle = max(2, int(np.ceil(largeur_min / max(w, 1))))
+    W, H = w * echelle, h * echelle
+    minx, miny, maxx, maxy = bbox4326
+
+    def px(x, y):
+        return ((x - minx) / (maxx - minx) * W, (maxy - y) / (maxy - miny) * H)
+
+    lignes = []
+    for g, coul, ep in ([(g, (255, 255, 255), 1) for g in (zones.to_crs(4326).geometry if zones is not None else [])]
+                        + [(g, (31, 42, 34), 3) for g in emprise.to_crs(4326).geometry]):
+        for poly in getattr(g, "geoms", [g]):
+            if poly.geom_type == "Polygon":
+                lignes.append(([px(x, y) for x, y in poly.exterior.coords], coul, ep))
+    try:
+        police = ImageFont.truetype("DejaVuSans.ttf", 15)
+    except OSError:
+        police = ImageFont.load_default()
+    images = []
+    for d, a in frames:
+        a = np.asarray(a, dtype="float32")[:h, :w]
+        rgba = (cmap(np.clip((a + 0.2) / 1.2, 0, 1)) * 255).astype("uint8")
+        rgba[~np.isfinite(a)] = (200, 200, 205, 255)
+        im = Image.fromarray(rgba, "RGBA").resize((W, H), Image.NEAREST).convert("RGB")
+        dr = ImageDraw.Draw(im)
+        for pts, coul, ep in lignes:
+            dr.line(pts, fill=coul, width=ep)
+        jour = pd.Timestamp(d).strftime("%d/%m/%Y")
+        dr.rectangle([0, H - 30, W, H], fill=(24, 33, 26))
+        dr.text((10, H - 24), f"NDVI le {jour}", fill=(244, 236, 223), font=police)
+        dr.text((W // 2, H - 24), "gris : nuages – Sentinel-2", fill=(220, 229, 188), font=police)
+        images.append(im.quantize(colors=128, method=Image.Quantize.MEDIANCUT))
+    buf = io.BytesIO()
+    images[0].save(buf, format="GIF", save_all=True, append_images=images[1:], duration=420, loop=0, optimize=True)
+    return buf.getvalue()
+
+
+def series_indices(series: pd.DataFrame, zones_affichees: list[str], noms: dict[str, str], indices=("NDVI", "BSI", "NDMI"),
+                   note: str = "") -> bytes | None:
+    """Petits multiples : un panneau par indice, une courbe par zone affichée (7 au plus, ordre fixe des couleurs)."""
+    s = series[series["zone"].isin(zones_affichees)]
+    if s.empty:
+        return None
+    site = list(zones_affichees)[:7]
+    fig, axs = plt.subplots(len(indices), 1, figsize=(11, 2.4 * len(indices) + 0.8), sharex=True)
+    fig.subplots_adjust(left=0.07, right=0.78, top=0.9, bottom=0.08, hspace=0.18)
+    axs = np.atleast_1d(axs)
+    for ax, ind in zip(axs, indices):
+        for i, z in enumerate(site):
+            d = s[(s["zone"] == z) & (s["indice"] == ind)].sort_values("date")
+            ax.plot(d["date"], d["valeur"], color=SERIES[i], lw=1.6, marker="o", ms=2.5, label=noms.get(z, z))
+        ax.axhline(0, color=FILET, lw=0.8)
+        ax.set_ylabel(ind, fontsize=9, color=TEXTE)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.tick_params(labelsize=8, colors=SECOND)
+        ax.grid(axis="y", color="#EEEEEE", lw=0.6)
+    axs[0].legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=False, fontsize=8)
+    return _export(fig, "Le site vu par satellite : indices par parcelle",
+                   "Copernicus Sentinel-2 L2A (ESA), via Earth Search / AWS Open Data ; formules : Awesome Spectral Indices (Montero et al., 2023)",
+                   " ; ".join(f"{i} : {INDICES_TXT.get(i, '')}" for i in indices) + (f". {note}" if note else ""))
+
+
+INDICES_TXT = {"NDVI": "végétation", "BSI": "sol nu", "NDMI": "eau dans la végétation", "MNDWI": "eau libre"}

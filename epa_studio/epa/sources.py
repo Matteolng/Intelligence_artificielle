@@ -39,6 +39,11 @@ CATALOGUE: dict[str, Source] = {
     "ru_bdgsf": Source("INRAE – Gis Sol", "Carte de la réserve utile en eau issue de la Base de données géographique des sols "
                        "de France (1/1 000 000), doi:10.15454/JPB9RB", "consultation",
                        "https://geodata.inrae.fr/geoserver/ows (inra_bdgsf:bdgsf_classe_ru)"),
+    "s2": Source("Copernicus / ESA", "Images Sentinel-2 niveau 2A (réflectance de surface), via le catalogue Earth Search "
+                 "(Element 84) et AWS Open Data", "consultation", "https://earth-search.aws.element84.com/v1"),
+    "asi": Source("Montero D. et al.", "A standardized catalogue of spectral indices to advance the use of remote sensing in Earth "
+                  "system research, Scientific Data 10:197, doi:10.1038/s41597-023-02096-0", "2023",
+                  "https://github.com/awesome-spectral-indices/awesome-spectral-indices"),
     "ortho": Source("IGN", "Photographies aériennes (ORTHOIMAGERY.ORTHOPHOTOS), date de prise de vue variable selon le département",
                     "consultation", "https://data.geopf.fr/wmts"),
     "plan_ign": Source("IGN", "Plan IGN v2", "consultation", "https://data.geopf.fr/wmts"),

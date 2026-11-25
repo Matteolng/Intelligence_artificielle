@@ -35,6 +35,7 @@ pages = {
     "2. État initial": [
         st.Page(P + "p04b_chiffres_cles.py", title="Chiffres clés", icon=":material/monitoring:"),
         st.Page(P + "p03_occupation.py", title="Occupation agricole (RPG)", icon=":material/grass:"),
+        st.Page(P + "p03b_teledetection.py", title="Le site vu par satellite", icon=":material/satellite_alt:"),
         st.Page(P + "p04_exploitations.py", title="Exploitations (RA 2020)", icon=":material/agriculture:"),
         st.Page(P + "p05_filieres.py", title="Filières amont et aval", icon=":material/factory:"),
         st.Page(P + "p06_qualite.py", title="Qualité et bio (SIQO)", icon=":material/verified:"),
@@ -47,7 +48,7 @@ pages = {
     ],
     "4. Livrables": [
         st.Page(P + "p13_figures.py", title="Figures", icon=":material/photo_library:"),
-        st.Page(P + "p11_rapport.py", title="Rapport et exports", icon=":material/description:"),
+        st.Page(P + "p11_rapport.py", title="Exports", icon=":material/download:"),
         st.Page(P + "p12_referentiel.py", title="Sources et réglementation", icon=":material/menu_book:"),
     ],
     "Bibliothèque": [

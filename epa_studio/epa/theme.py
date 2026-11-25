@@ -140,6 +140,27 @@ a {{ color: var(--accent); }}
 .epa-bar .track {{ height: 26px; background: rgba(31,42,34,.06); border-radius: 6px; overflow:hidden; }}
 .epa-bar .fill {{ height:100%; border-radius: 6px; transform-origin: left; animation: epaGrow 1.1s cubic-bezier(.2,.7,.2,1) both; }}
 .epa-bar .v {{ text-align:right; font-variant-numeric: tabular-nums; }}
+@keyframes epaDraw {{ from {{stroke-dashoffset:1}} to {{stroke-dashoffset:0}} }}
+@keyframes epaPop {{ from {{opacity:0; transform:scale(.4)}} to {{opacity:1; transform:none}} }}
+.epa-courbe path.l {{ fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; stroke-dasharray:1; stroke-dashoffset:1;
+  animation: epaDraw 2.2s cubic-bezier(.3,.6,.2,1) forwards; }}
+.epa-courbe path.ref {{ fill:none; stroke-width:1.6; stroke-dasharray:4 4; opacity:.85; }}
+.epa-courbe circle {{ opacity:0; transform-box: fill-box; transform-origin: center; animation: epaPop .4s ease-out forwards; }}
+.epa-courbe circle:hover {{ r: 5; }}
+.epa-legende {{ display:flex; flex-wrap:wrap; gap:.4rem 1.1rem; font-size:.82rem; margin:.4rem 0 .2rem; }}
+.epa-legende span {{ display:inline-flex; align-items:center; gap:.4rem; }}
+.epa-legende i {{ display:inline-block; width:18px; height:3px; border-radius:2px; }}
+.epa-indices {{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem; margin-top: 1.2rem; }}
+.epa-indice {{ padding: 1.2rem 1.3rem; }}
+.epa-indice .code {{ font-family: var(--serif); font-size: 2.2rem; line-height: 1; color: var(--clair); }}
+.epa-indice .nom {{ font-size: .85rem; color: rgba(244,236,223,.78); margin: .2rem 0 .7rem; }}
+.epa-indice .f {{ font-family: ui-monospace, monospace; font-size: .8rem; background: rgba(0,0,0,.22); border-radius: 8px; padding: .35rem .6rem;
+  display: inline-block; margin-bottom: .6rem; }}
+.epa-indice p {{ margin: .25rem 0; font-size: .88rem; line-height: 1.5; color: rgba(244,236,223,.9); }}
+.epa-indice .ref {{ font-size: .72rem; color: rgba(244,236,223,.62); margin-top: .5rem; }}
+.epa-gamme {{ height: 8px; border-radius: 4px; margin: .7rem 0 .2rem; transform-origin: left; animation: epaGrow 1.4s cubic-bezier(.2,.7,.2,1) both .3s; }}
+.epa-gamme-l {{ display:flex; justify-content:space-between; font-size:.7rem; color: rgba(244,236,223,.7); }}
+@media (max-width: 900px) {{ .epa-indices {{ grid-template-columns: minmax(0,1fr); }} }}
 @media (max-width: 900px) {{ .epa-rings {{ grid-template-columns: minmax(0,1fr); }} .epa-frise {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }}
   .epa-hero h1, .epa-hero.grand h1 {{ font-size: 3rem !important; }} .epa-bar {{ grid-template-columns: 120px minmax(0,1fr) 64px; }} }}
 @media (prefers-reduced-motion: reduce) {{ *, *::before {{ animation: none !important; transition: none !important; }} }}
@@ -259,3 +280,64 @@ def frise(etapes: list[tuple[str, str, str]]) -> str:
     items = "".join(f'<li><div class="num">{html.escape(n)}</div>{ETOILE.replace("12", "16")}<b>{html.escape(t)}</b>'
                     f'<span>{html.escape(d)}</span></li>' for n, t, d in etapes)
     return f'<ol class="epa-frise">{items}</ol>'
+
+
+GAMMES = {"NDVI": "linear-gradient(90deg,#8A7A5C,#F4ECDF 18%,#DCE5BC 45%,#56653E 75%,#1F3A1A)",
+          "BSI": "linear-gradient(90deg,#1F3A1A,#56653E 35%,#F4ECDF 60%,#C9A26B 80%,#8A5A2B)",
+          "NDMI": "linear-gradient(90deg,#8A5A2B,#F4ECDF 45%,#86B6EF 75%,#1C5CAB)",
+          "MNDWI": "linear-gradient(90deg,#56653E,#F4ECDF 55%,#6DA7EC 80%,#184F95)"}
+
+
+def carte_indice(ind) -> str:
+    """Carte explicative d'un indice : ce qu'il montre, formule Sentinel-2, lecture, limites, référence, gamme animée."""
+    e = html.escape
+    return (f'<div class="epa-glass epa-indice"><div class="code">{e(ind.code)}</div><div class="nom">{e(ind.nom)}</div>'
+            f'<span class="f">{e(ind.bandes)}</span><p><b>Ce qu\'il montre.</b> {e(ind.montre)}</p><p><b>Comment le lire.</b> {e(ind.lecture)}</p>'
+            f'<p><b>Limites.</b> {e(ind.limites)}</p><div class="epa-gamme" style="background:{GAMMES.get(ind.code, "#DCE5BC")}"></div>'
+            f'<div class="epa-gamme-l"><span>{ind.vmin:+.1f}</span><span>{ind.vmax:+.1f}</span></div>'
+            f'<div class="ref">{e(ind.reference)}</div></div>')
+
+
+def courbes(series: dict, couleurs: list[str], vmin: float, vmax: float, reference: list | None = None,
+            ref_label: str = "", largeur: int = 980, hauteur: int = 280) -> str:
+    """Courbes SVG qui se tracent à l'affichage ; survol d'un point : date et valeur. series : {nom: [(date, valeur)]}."""
+    import pandas as pd
+
+    pts = [d for v in series.values() for d, _ in v] + [d for d, _ in (reference or [])]
+    if not pts:
+        return ""
+    d0, d1 = pd.Timestamp(min(pts)), pd.Timestamp(max(pts))
+    span = max((d1 - d0).days, 1)
+    g, dr, hb = 44, 14, 26
+    X = lambda d: g + (pd.Timestamp(d) - d0).days / span * (largeur - g - dr)  # noqa: E731
+    Y = lambda v: 10 + (vmax - v) / (vmax - vmin) * (hauteur - 10 - hb)  # noqa: E731
+    out = [f'<svg class="epa-courbe" viewBox="0 0 {largeur} {hauteur}" width="100%" role="img" aria-label="Évolution de l\'indice par parcelle">']
+    for k in range(5):  # grille légère
+        v = vmin + (vmax - vmin) * k / 4
+        out.append(f'<line x1="{g}" x2="{largeur - dr}" y1="{Y(v):.1f}" y2="{Y(v):.1f}" stroke="rgba(31,42,34,.08)"/>'
+                   f'<text x="{g - 6}" y="{Y(v) + 4:.1f}" text-anchor="end" font-size="10" fill="#4F5649">{v:.1f}</text>')
+    if vmin < 0 < vmax:
+        out.append(f'<line x1="{g}" x2="{largeur - dr}" y1="{Y(0):.1f}" y2="{Y(0):.1f}" stroke="rgba(31,42,34,.35)"/>')
+    m = pd.date_range(d0.normalize(), d1, freq="MS")  # premiers jours de mois à l'intérieur de la période
+    for d in m[:: max(1, len(m) // 12)]:
+        out.append(f'<text x="{X(d):.1f}" y="{hauteur - 8}" text-anchor="middle" font-size="10" fill="#4F5649">{MOIS_COURT[d.month - 1]} {str(d.year)[2:]}</text>')
+    if reference:
+        p = " ".join(f"{'M' if i == 0 else 'L'}{X(d):.1f},{Y(v):.1f}" for i, (d, v) in enumerate(reference))
+        out.append(f'<path class="ref" d="{p}" stroke="#8C9180"/>')
+    for i, (nom, v) in enumerate(series.items()):
+        if not v:
+            continue
+        c = couleurs[i % len(couleurs)]
+        p = " ".join(f"{'M' if j == 0 else 'L'}{X(d):.1f},{Y(val):.1f}" for j, (d, val) in enumerate(v))
+        out.append(f'<path class="l" pathLength="1" d="{p}" stroke="{c}" style="animation-delay:{i * .25:.2f}s"/>')
+        for j, (d, val) in enumerate(v):
+            out.append(f'<circle cx="{X(d):.1f}" cy="{Y(val):.1f}" r="2.6" fill="{c}" style="animation-delay:{1.6 + i * .25 + j * .01:.2f}s">'
+                       f'<title>{html.escape(nom)} – {pd.Timestamp(d).strftime("%d/%m/%Y")} : {val:.2f}</title></circle>')
+    out.append("</svg>")
+    leg = "".join(f'<span><i style="background:{couleurs[i % len(couleurs)]}"></i>{html.escape(n)}</span>' for i, n in enumerate(series))
+    if reference:
+        leg += f'<span><i style="background:repeating-linear-gradient(90deg,#8C9180 0 4px,transparent 4px 8px)"></i>{html.escape(ref_label)}</span>'
+    return "".join(out) + f'<div class="epa-legende">{leg}</div>'
+
+
+MOIS_COURT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]

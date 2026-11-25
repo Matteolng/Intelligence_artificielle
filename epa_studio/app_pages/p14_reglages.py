@@ -5,7 +5,7 @@ from epa.branding import (DEFAUT_COULEUR, POLICES_TEXTE, POLICES_TITRES, brandin
 from epa.http import cache_size_mb, clear_cache
 from epa.ui import entete
 
-entete(None, "Réglages", italique="à vos couleurs", intro="Identité du bureau d'études : interface, figures exportées, rapport Word et diapositives.")
+entete(None, "Réglages", italique="à vos couleurs", intro="Identité du bureau d'études : interface et figures exportées.")
 b = branding_courant()
 with st.form("branding"):
     c1, c2 = st.columns(2)
@@ -14,15 +14,10 @@ with st.form("branding"):
     p1 = c1.selectbox("Police des titres", POLICES_TITRES, index=POLICES_TITRES.index(b.police_titres))
     p2 = c2.selectbox("Police du texte", POLICES_TEXTE, index=POLICES_TEXTE.index(b.police_texte))
     logo = st.file_uploader("Logo (PNG, JPG ou SVG)", type=["png", "jpg", "jpeg", "svg"])
-    g1, g2 = st.columns(2)
-    gdocx = g1.file_uploader("Gabarit Word du bureau (.docx, .dotx)", type=["docx", "dotx"],
-                             help="Styles, en-têtes et pieds de page repris dans le rapport généré.")
-    gpptx = g2.file_uploader("Gabarit PowerPoint du bureau (.pptx, .potx)", type=["pptx", "potx"],
-                             help="Masques et format repris dans les diapositives générées.")
     pour_tous = st.toggle("Enregistrer pour tous les utilisateurs de cette instance", value=True)
     if st.form_submit_button("Enregistrer", type="primary"):
         regl = {"nom": nom, "couleur": couleur_valide(coul), "police_titres": p1, "police_texte": p2}
-        fichiers = {k: (f.name, f.getvalue()) for k, f in (("logo", logo), ("gabarit_docx", gdocx), ("gabarit_pptx", gpptx)) if f}
+        fichiers = {"logo": (logo.name, logo.getvalue())} if logo else {}
         try:
             if pour_tous:
                 enregistrer_marque(regl, fichiers)
@@ -36,7 +31,7 @@ with st.form("branding"):
 if contraste_blanc(b.couleur) < 4.5:
     st.warning(f"La couleur {b.couleur} offre un contraste de {contraste_blanc(b.couleur):.1f}:1 avec le blanc, sous le seuil "
                "de 4,5:1 recommandé (WCAG 2.2, niveau AA) : textes des boutons et liens peu lisibles. Choisissez une teinte plus foncée.")
-etat = [("Logo", b.logo), ("Gabarit Word", b.gabarit_docx), ("Gabarit PowerPoint", b.gabarit_pptx)]
+etat = [("Logo", b.logo)]
 st.caption(" ; ".join(f"{k} : {'enregistré' if v else 'aucun'}" for k, v in etat) + f". Couleur par défaut : {DEFAUT_COULEUR}.")
 
 st.markdown("#### Données en cache")

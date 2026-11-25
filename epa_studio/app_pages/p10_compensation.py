@@ -43,7 +43,7 @@ d'agriculture des Bouches-du-Rhône, PACA). Voir « Cadre réglementaire et sour
 
 st.markdown("##### 1. Produit brut par hectare des cultures de l'emprise")
 st.caption("Sources possibles : coefficients de production brute standard (Agreste), RICA, références des chambres d'agriculture, "
-           "comptabilités des exploitations concernées. Indiquez la source retenue dans le rapport.")
+           "comptabilités des exploitations concernées. Indiquez la source retenue.")
 prev = st.session_state.get("pb_table")
 tab = base.copy()
 tab["pb_eur_ha"] = 0.0
@@ -148,4 +148,4 @@ if res.get("etp_concernes") is not None:
 st.markdown("##### Analyse de sensibilité – montant (€) selon la durée et le ratio")
 st.dataframe(sens.style.format("{:,.0f}"))
 source("Calcul EPA Studio à partir des surfaces RPG de l'emprise et des paramètres saisis. Méthode générique : à adapter à la doctrine départementale.")
-st.page_link("app_pages/p11_rapport.py", label="Étape suivante : générer le rapport", icon=":material/arrow_forward:")
+st.page_link("app_pages/p11_rapport.py", label="Étape suivante : exporter les données", icon=":material/arrow_forward:")

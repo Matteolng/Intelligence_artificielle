@@ -149,9 +149,9 @@ def test_marque_instance(tmp_path, monkeypatch):
     from epa import bibliotheque
     monkeypatch.setattr(bibliotheque, "LIB", tmp_path)
     B.enregistrer_marque({"nom": "Bureau X", "couleur": "#123456", "police_titres": "Playfair Display"},
-                         {"logo": ("logo.png", b"\x89PNG"), "gabarit_pptx": ("charte.pptx", b"PK")})
+                         {"logo": ("logo.png", b"\x89PNG")})
     b = B.branding_courant({})
     assert (b.nom, b.couleur, b.police_titres) == ("Bureau X", "#123456", "Playfair Display")
-    assert b.logo.name == "logo.png" and b.gabarit_pptx.name == "gabarit_pptx.pptx" and b.gabarit_docx is None
+    assert b.logo.name == "logo.png"
     with pytest.raises(ValueError):
         B.enregistrer_marque({}, {"logo": ("virus.exe", b"MZ")})
