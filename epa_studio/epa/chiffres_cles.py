@@ -8,6 +8,7 @@ import pandas as pd
 from . import agreste
 
 LIGNE_FRANCE = "France (somme des départements)"
+ECHELLES = ("Périmètre", "Département", "Région", "France")
 
 
 def departement_reference(communes: gpd.GeoDataFrame, code_site: str | None = None) -> str:
@@ -21,8 +22,9 @@ def departement_reference(communes: gpd.GeoDataFrame, code_site: str | None = No
 
 
 def comparaison(df_com: pd.DataFrame, df_dep: pd.DataFrame, codes_communes: list[str], code_dep: str,
-                label_perimetre: str = "Périmètre d'étude") -> pd.DataFrame:
-    """Trois lignes : périmètre (agrégat des communes), département, France = somme des départements publiés.
+                label_perimetre: str = "Périmètre d'étude", df_reg: pd.DataFrame | None = None,
+                code_reg: str | None = None) -> pd.DataFrame:
+    """Quatre échelles : périmètre (agrégat des communes), département, région (si fournie), France = somme des départements.
 
     Les communes sans donnée (secret statistique) sont exclues des sommes et comptées dans une colonne dédiée.
     """
@@ -31,6 +33,8 @@ def comparaison(df_com: pd.DataFrame, df_dep: pd.DataFrame, codes_communes: list
         agreste.synthese(sel, label_perimetre),
         agreste.ligne_reference(df_dep, code_dep, f"Département ({code_dep})"),
     ]
+    if df_reg is not None and code_reg:
+        lignes.append(agreste.ligne_reference(df_reg, code_reg, f"Région ({code_reg})"))
     fr = agreste.synthese(df_dep, LIGNE_FRANCE)
     fr["Communes sans donnée (secret ou absence)"] = None
     lignes.append(fr)

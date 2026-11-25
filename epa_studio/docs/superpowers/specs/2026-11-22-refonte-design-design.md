@@ -1,10 +1,10 @@
 # Refonte du design d'EPA Studio – document de conception
 
 Date : 2026-11-22 · Statut : direction et plan des pages approuvés par l'utilisateur (« c'est bien »),
-avec la consigne : **l'EI un bureau d'études sert uniquement de référence de contenu, pas de modèle visuel ; viser classe et pro.**
+avec la consigne : **l'EI l'utilisateur sert uniquement de référence de contenu, pas de modèle visuel ; viser classe et pro.**
 
 ## Intention
-Présenter EPA Studio à des bureaux d'études agricoles (dont un bureau d'études). L'outil doit impressionner en démonstration et
+Présenter EPA Studio à des bureaux d'études agricoles . L'outil doit impressionner en démonstration et
 servir au quotidien : il automatise les cartes, tableaux et chiffres récurrents d'une étude préalable agricole ; le
 chargé d'études garde la rédaction de l'analyse.
 
@@ -15,7 +15,7 @@ chargé d'études garde la rédaction de l'analyse.
    fichier `epa_studio/branding.toml` + écran Réglages en session). Aucune marque en dur.
 3. Navigation par étapes : Cadrage → État initial → Impacts → Livrables (sequence réelle, numérotation justifiée).
 4. Accueil qui montre la valeur en 10 s : bouton « Ouvrir la démonstration », aperçu de ce qui est produit.
-5. Mode démonstration : projet Commune-exemple (32), données réelles pré-téléchargées et mises en cache dans le dépôt.
+5. Mode démonstration : territoire d'exemple, données réelles pré-téléchargées et mises en cache dans le dépôt.
 6. Figures types générées automatiquement, exportables en PNG haute définition (300 dpi) avec titre et source :
    RPG par année sur ortho ; localisation 3 échelles ; OTEX par commune ; CLC 2018 ; sols ; chiffres clés comparés.
 7. Phrases de synthèse par gabarit (sans IA) + bibliographie construite à partir des sources réellement interrogées.
@@ -65,3 +65,6 @@ chargé d'études garde la rédaction de l'analyse.
 
 ## Laissé au constructeur
 Détail des gabarits de phrases, mise en page exacte des figures, structure du cache démo.
+
+
+> Note (25/11/2026) : la démonstration ne repose plus sur un territoire fixe ; voir la conception v2.

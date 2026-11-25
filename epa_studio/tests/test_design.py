@@ -126,3 +126,20 @@ def test_tuile_format_francais():
 def test_contraste_couleur():
     assert round(B.contraste_blanc("#2F6B3A"), 2) == 6.39
     assert B.contraste_blanc("#FFD700") < 4.5
+
+
+def test_phrase_quatre_echelles():
+    assert phrase_evolution("Le nombre d'exploitations", False, -27.0, -22.1, -19.9, v_reg=-22.6) == (
+        "Le nombre d'exploitations recule de 27,0 % entre 2010 et 2020, contre 22,1 % dans le département, "
+        "22,6 % dans la région et 19,9 % en France.")
+    assert "la valeur régionale n'est pas disponible" in phrase_evolution("X", False, -5.0, -4.0, -3.0, avec_region=True)
+
+
+def test_comparaison_quatre_lignes_et_region_absente():
+    com = _df([["1", "a", 10, 100, -10.0, 0.0]])
+    dep = _df([["32", "Gers", 100, 1000, -14.5, 0.3]])
+    reg = _df([["76", "Occitanie", 500, 5000, -12.0, 0.1]])
+    t = C.comparaison(com, dep, ["1"], "32", df_reg=reg, code_reg="76")
+    assert list(t["Territoire"]) == ["Périmètre d'étude", "Département (32)", "Région (76)", C.LIGNE_FRANCE]
+    t2 = C.comparaison(com, dep, ["1"], "32", df_reg=reg, code_reg="99")
+    assert t2.loc[2, "Territoire"] == "Région (99)" and pd.isna(t2.loc[2].get("Exploitations 2020"))

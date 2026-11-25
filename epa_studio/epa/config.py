@@ -18,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 CACHE_DIR = Path(os.environ.get("EPA_CACHE_DIR", Path.home() / ".cache" / "epa_studio"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
-# Cache livré avec l'application pour la démonstration (lecture seule, données réelles téléchargées par scripts/precharger_demo.py)
+# Cache livré avec l'application : tables nationales préchargées par scripts/precharger_demo.py (lecture seule)
 DEMO_CACHE_DIR = Path(os.environ.get("EPA_DEMO_CACHE_DIR", BASE_DIR.parent / "demo_cache"))
 
 # Durée de validité du cache disque (jours) par famille de données
@@ -44,6 +44,10 @@ GPF_WMTS = "https://data.geopf.fr/wmts"
 RECHERCHE_ENTREPRISES = "https://recherche-entreprises.api.gouv.fr/search"  # API Recherche d'entreprises (DINUM)
 AGENCE_BIO_API = "https://opendata.agencebio.org/api/gouv/operateurs/"  # Annuaire Agence Bio
 DVF_CEREMA_API = "https://apidf-preprod.cerema.fr/dvf_opendata/mutations/"  # API Données foncières Cerema (DVF open data)
+OTEX_COMMUNES_CSV = (  # Agreste RA 2020, OTEX communale en 12 postes, publié sur data.gouv.fr par TACCT (09/07/2026)
+    "https://static.data.gouv.fr/resources/specialisation-territoriale-de-la-production-agricole-par-commune-en-2020-otex-en-12-postes/"
+    "20260709-091116/otex-12-postes.csv"
+)
 ODT_BASE = "https://www.observatoire-des-territoires.gouv.fr"  # Observatoire des territoires (ANCT)
 
 # INAO – fichiers publiés sur data.gouv.fr (licence ouverte)

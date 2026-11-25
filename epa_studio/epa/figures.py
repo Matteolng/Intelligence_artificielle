@@ -205,7 +205,8 @@ def localisation_3_echelles(departement: gpd.GeoDataFrame, perimetre: gpd.GeoDat
                    "Du département à la commune du site")
 
 
-def carte_otex(communes: gpd.GeoDataFrame, df_otex: pd.DataFrame | None, col_code: str = "codgeo", col_otex: str = "otex") -> bytes | None:
+def carte_otex(communes: gpd.GeoDataFrame, df_otex: pd.DataFrame | None, col_code: str = "codgeo", col_otex: str = "otex",
+               source: str = "Agreste, recensement agricole 2020, OTEX en 12 postes (data.gouv.fr)") -> bytes | None:
     """Orientation technico-économique dominante par commune (export Cartostat/DISAR importé). None sans fichier."""
     if df_otex is None or df_otex.empty or col_otex not in df_otex:
         return None
@@ -235,7 +236,7 @@ def carte_otex(communes: gpd.GeoDataFrame, df_otex: pd.DataFrame | None, col_cod
         h.append(Patch(facecolor="white", edgecolor=FILET, hatch="////", label="Non diffusé"))
     fig.legend(handles=h, loc="upper left", bbox_to_anchor=(0.71, 0.88), frameon=False, fontsize=7, title="OTEX dominante",
                title_fontsize=7.5, alignment="left")
-    return _export(fig, "Orientation technico-économique des communes", "Agreste, recensement agricole 2020 (export importé par l'utilisateur)",
+    return _export(fig, "Orientation technico-économique des communes", source,
                    "OTEX dominante par commune du périmètre d'étude")
 
 

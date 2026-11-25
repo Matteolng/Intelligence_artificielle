@@ -122,26 +122,27 @@ manquant("Réserve utile et profondeur des sols", "INRAE / Gis Sol",
 st.divider()
 
 # 5. OTEX
-st.markdown("#### Orientation technico-économique des communes (OTEX)")
-st.caption("Importez un export Cartostat ou DISAR (Agreste, RA 2020) contenant le code commune et l'OTEX.")
-up = st.file_uploader("Export OTEX par commune (xlsx ou csv)", type=["xlsx", "xls", "csv"], key="otex_up")
-if up is not None:
-    try:
-        df = agreste.lire_fichier_utilisateur(up.name, up.getvalue())
-        col = st.selectbox("Colonne contenant l'OTEX", [c for c in df.columns if c != "codgeo"])
-        if st.button("Générer la figure", key="gen_otex"):
-            stocker("fig::otex", figures.carte_otex(t.communes, df.rename(columns={col: "otex"})))
-    except DataSourceError as e:
-        st.error(str(e))
-png = resultat("fig::otex")
-if png:
-    st.image(png, width="stretch")
-    bouton_png(png, "otex")
-    from epa import sources as S
-    S.enregistrer("cartostat")
-elif up is None:
-    manquant("OTEX par commune", "Agreste, RA 2020 (Cartostat / DISAR)",
-             "L'Observatoire des territoires ne diffuse pas l'OTEX communale : importez l'export ci-dessus.")
+def g_otex():
+    from epa.otex import otex_communes
+    return figures.carte_otex(t.communes, otex_communes())
+
+
+bloc("otex", "Orientation technico-économique des communes (OTEX)",
+     "OTEX dominante de chaque commune du périmètre, recensement agricole 2020, en 12 postes.", g_otex, ("otex",))
+with st.expander("Remplacer par un export Cartostat ou DISAR"):
+    up = st.file_uploader("Export OTEX par commune (xlsx ou csv)", type=["xlsx", "xls", "csv"], key="otex_up")
+    if up is not None:
+        try:
+            df = agreste.lire_fichier_utilisateur(up.name, up.getvalue())
+            col = st.selectbox("Colonne contenant l'OTEX", [c for c in df.columns if c != "codgeo"])
+            if st.button("Générer depuis ce fichier", key="gen_otex_up"):
+                stocker("fig::otex", figures.carte_otex(t.communes, df.rename(columns={col: "otex"}),
+                                                        source="Agreste, RA 2020, export Cartostat / DISAR importé"))
+                from epa import sources as S
+                S.enregistrer("cartostat")
+                st.rerun()
+        except DataSourceError as e:
+            st.error(str(e))
 st.divider()
 
 # 6. Évolutions

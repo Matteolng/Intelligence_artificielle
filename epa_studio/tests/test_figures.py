@@ -52,3 +52,10 @@ def test_otex_codes_numeriques():
     com = _g(code=["32001", "32002"])
     png = F.carte_otex(com, pd.DataFrame({"codgeo": ["32001"], "otex": [1500.0]}))
     assert _dpi(png) == 300
+
+
+def test_lire_otex_codes_sur_5_caracteres():
+    from epa.otex import lire_otex
+    csv = "index;code_geographique;libelle_geographique;otex_12_postes\n0;1001;A;Grandes cultures\n1;2A004;B;Viticulture\n".encode()
+    d = lire_otex(csv)
+    assert d["codgeo"].tolist() == ["01001", "2A004"] and d["otex"].tolist() == ["Grandes cultures", "Viticulture"]

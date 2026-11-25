@@ -40,6 +40,9 @@ CATALOGUE: dict[str, Source] = {
                     "consultation", "https://data.geopf.fr/wmts"),
     "plan_ign": Source("IGN", "Plan IGN v2", "consultation", "https://data.geopf.fr/wmts"),
     "osm": Source("Contributeurs OpenStreetMap", "Fond de carte OpenStreetMap", "consultation", "https://www.openstreetmap.org"),
+    "otex": Source("Agreste – SSP (RA 2020), fichier publié par TACCT sur data.gouv.fr",
+                   "Spécialisation territoriale de la production agricole par commune (OTEX en 12 postes)", "2020",
+                   "https://www.data.gouv.fr/datasets/specialisation-territoriale-de-la-production-agricole-par-commune-en-2020-otex-en-12-postes"),
     "cartostat": Source("Agreste – SSP", "Export Cartostat / DISAR importé par l'utilisateur", "selon fichier importé",
                         "https://stats.agriculture.gouv.fr/cartostat"),
 }

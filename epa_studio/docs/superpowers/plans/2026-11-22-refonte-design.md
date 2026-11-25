@@ -68,13 +68,13 @@
 
 ### Task 7: Mode démonstration
 **Files:** Create `epa/demo.py`, `scripts/precharger_demo.py`, `demo_cache/` ; Modify `epa/http.py` (`_cache_path` : lecture de repli dans `DEMO_CACHE_DIR`), `epa/config.py`; Test `tests/test_demo.py`.
-**Interfaces:** Produces `DEMO_EPCIS: list[dict]` (EPCI d'exemple `000000000`, EPCI d'exemple), `DEMO_COMMUNE_SITE = "00000"`, `charger_demo(state: MutableMapping) -> None` (territoire, projet, emprise illustrative signalée comme fictive).
+**Interfaces:** Produces `DEMO_EPCIS: list[dict]` (EPCI d'exemple), `DEMO_COMMUNE_SITE = "[code]"`, `charger_demo(state: MutableMapping) -> None` (territoire, projet, emprise illustrative signalée comme fictive).
 - [ ] Test `test_cache_repli_demo` (fichier présent seulement dans le répertoire démo → lu).
 - [ ] Exécuter `python scripts/precharger_demo.py` ; vérifier la taille de `demo_cache/` (< 50 Mo, sinon réduire aux millésimes nécessaires). Commit.
 
 ### Task 8: Pages
 **Files:** Modify `app.py`, toutes les pages `app_pages/*.py` (en-têtes, tuiles, sources) ; Create `app_pages/p04b_chiffres_cles.py`, `app_pages/p13_figures.py`, `app_pages/p14_reglages.py` ; Modify `tests/test_pages.py`.
-- [ ] Accueil : bouton « Ouvrir la démonstration (Commune-exemple, Gers) », ce que l'outil produit, sources.
+- [ ] Accueil : bouton « Ouvrir la démonstration (territoire d'exemple, Gers) », ce que l'outil produit, sources.
 - [ ] Barre latérale : nom/logo du bureau, projet courant, progression.
 - [ ] `pytest -q tests/test_pages.py` PASS ; commit par groupe de pages.
 
@@ -85,3 +85,6 @@
 ### Task 10: Vérification finale
 - [ ] `superpowers:verification-before-completion` : suite complète, captures finales.
 - [ ] `code-review` sur la branche ; corriger ; pousser `claude/epa-agricultural-studies-app-v1rewy`.
+
+
+> Note (25/11/2026) : la démonstration ne repose plus sur un territoire fixe ; voir la conception v2.

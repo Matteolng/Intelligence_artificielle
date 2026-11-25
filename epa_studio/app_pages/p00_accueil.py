@@ -2,7 +2,6 @@ import streamlit as st
 
 from epa.branding import branding_courant
 from epa.config import APP_NAME, APP_VERSION
-from epa.demo import DEMO_NOM, charger_demo
 from epa.http import DataSourceError
 
 b = branding_courant()
@@ -16,18 +15,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-c1, c2, _ = st.columns([1.35, 1, 1.6])
-if c1.button("Ouvrir la démonstration", type="primary", icon=":material/play_arrow:", width="stretch",
-             help="Données publiques réelles, préchargées pour une démonstration fluide"):
-    with st.spinner("Chargement du périmètre de démonstration…"):
-        try:
-            charger_demo(st.session_state)
-        except DataSourceError as e:
-            st.error(f"Le périmètre de démonstration n'a pas pu être chargé : {e}")
-            st.stop()
-    st.switch_page("app_pages/p04b_chiffres_cles.py")
-c2.page_link("app_pages/p01_territoire.py", label="Nouveau projet", icon=":material/add:")
-st.caption(f"Démonstration : {DEMO_NOM}, EPCI d'exemple et EPCI d'exemple. Vous ajoutez ensuite l'emprise de votre projet.")
+st.page_link("app_pages/p01_territoire.py", label="Nouveau projet", icon=":material/add:")
 
 st.write("")
 st.markdown("#### Ce que l'outil prépare pour vous")
