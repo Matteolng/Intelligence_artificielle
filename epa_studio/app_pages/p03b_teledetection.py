@@ -5,7 +5,7 @@ import streamlit as st
 
 from epa import figures, rpg
 from epa import teledetection as TD
-from epa.config import RPG_LAYERS
+from epa import catalogue as CAT
 from epa.http import DataSourceError
 from epa.projet import surface_ha
 from epa.sources import enregistrer
@@ -54,6 +54,7 @@ cle = (tuple(sorted(annees)), rayon, round(surface_ha(emprise), 2))
 if (lancer or (st.session_state.get("mode_demo") and res is None)) and annees:
     bar = st.progress(0.0, text="Parcelles du registre parcellaire graphique…")
     try:
+        RPG_LAYERS = CAT.rpg_couches()
         lay = RPG_LAYERS[next(iter(RPG_LAYERS))]
         site = rpg.rpg_emprise(lay, emprise)
         vois = None
@@ -80,7 +81,7 @@ if (lancer or (st.session_state.get("mode_demo") and res is None)) and annees:
     b_ = TD.bilan(out["series"], zones)
     if not b_.empty:
         b_.insert(0, "Zone (nom)", b_["Zone"].map(noms).fillna(b_["Zone"]))
-    an_ref = int(next(iter(RPG_LAYERS))[:4])  # cultures des parcelles = RPG le plus récent : comparaisons sur cette année-là
+    an_ref = CAT.annee_rpg_recente()  # cultures des parcelles = RPG le plus récent : comparaisons sur cette année-là
     v_ = TD.voisinage(out["series"], zones, an_ref) if rayon else pd.DataFrame()
     if not v_.empty:
         v_.insert(0, "Parcelle (nom)", v_["Parcelle"].map(noms).fillna(v_["Parcelle"]))
@@ -106,9 +107,18 @@ enregistrer("s2")
 enregistrer("asi")
 enregistrer("usgs_ndvi")
 enregistrer("timesat")
-enregistrer(f"rpg:{next(iter(RPG_LAYERS))[:4]}")
+enregistrer(f"rpg:{res['annee_ref']}")
 
 S, z, noms = res["series"], res["zones"], res["noms"]
+_fcache = res.setdefault("_fourchettes", {})
+
+
+def fourchette(culture, indice):
+    """Fourchette des voisines (année du RPG), mémorisée dans le résultat : calculée une fois par culture et indice."""
+    k = (culture, indice)
+    if k not in _fcache:
+        _fcache[k] = TD.fourchette(S, z, culture, indice, annee=res["annee_ref"])
+    return _fcache[k]
 emp = S[S["zone"] == "emprise"]
 
 # --- Le film du site et les chiffres -------------------------------------------------------------------------------
@@ -149,7 +159,7 @@ _zs = z[z["zone"].isin([a for a in choix if a.startswith("site:")]) & z["culture
 if not _zs.empty:
     _zs["ha"] = _zs.to_crs(L93).area / 1e4
     c0 = _zs.groupby("culture")["ha"].sum().idxmax()
-    f_ind = TD.fourchette(S, z, c0, ind, annee=res["annee_ref"])
+    f_ind = fourchette(c0, ind)
     if not f_ind.empty:
         ref = list(zip(f_ind["date"], f_ind["p50"]))
         ref_lab = f"médiane des parcelles voisines – {c0.lower()} au RPG {res['annee_ref']} ({int(f_ind['n'].max())} au plus par date)"
@@ -184,7 +194,7 @@ if _reste:
         for p in _reste:
             phrase(p)
 if c0:
-    f_nd = TD.fourchette(S, z, c0, "NDVI", annee=res["annee_ref"])
+    f_nd = fourchette(c0, "NDVI")
     fen = TD.fenetre_saison(f_nd.set_index("date")["p50"]) if not f_nd.empty else None
     for k in [a for a in choix if a.startswith("site:") and z.set_index("zone").loc[a, "culture"] == c0]:
         pos = TD.position_fourchette(S[(S["zone"] == k) & (S["indice"] == "NDVI")][["date", "valeur"]], f_nd, fen)
@@ -209,7 +219,7 @@ for k in choix:
         jal += [(ph.get("debut"), f"Début de saison {an}"), (ph.get("pic"), f"Pic {an}"), (ph.get("fin"), f"Fin de saison {an}")]
     lignes_cal.append({"nom": noms.get(k, k), "points": list(nd.items()), "jalons": jal})
 if c0 and ref:
-    _fm = TD.fourchette(S, z, c0, "NDVI", annee=res["annee_ref"])
+    _fm = fourchette(c0, "NDVI")
     lignes_cal.append({"nom": f"Voisines – {c0.lower()} {res['annee_ref']}", "points": [(d, v) for d, v in _fm[["date", "p50"]].itertuples(index=False)],
                        "jalons": [(TD.phenologie(_fm.set_index('date')['p50']).get(k), f"{lab} (voisines)") for k, lab in
                                   (("debut", "Début de saison"), ("pic", "Pic"), ("fin", "Fin de saison"))]})

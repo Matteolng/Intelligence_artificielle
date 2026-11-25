@@ -5,7 +5,7 @@ import streamlit as st
 from epa import agreste, figures, rpg
 from epa import territoire as T
 from epa.chiffres_cles import departement_reference
-from epa.config import RPG_LAYERS
+from epa import catalogue as CAT
 from epa.http import DataSourceError
 from epa.projet import site_courant
 from epa.ui import bouton_png, entete, manquant, require_territoire, resultat, sources, stocker
@@ -89,7 +89,7 @@ bloc("localisation", "Localisation à trois échelles", "Département, périmèt
 
 
 # 2. Vignettes RPG
-annees_dispo = {int(re.match(r"\d{4}", k).group()): v for k, v in RPG_LAYERS.items()}
+annees_dispo = {int(re.match(r"\d{4}", k).group()): v for k, v in CAT.rpg_couches().items()}
 choix = st.session_state.setdefault("fig_rpg_annees", sorted(annees_dispo)[-5:])
 
 
@@ -104,11 +104,12 @@ bloc("rpg_" + "_".join(map(str, sorted(choix))), "Cultures déclarées sur le si
      g_rpg, tuple(f"rpg:{a}" for a in sorted(choix)) + ("ortho",),
      None if a_emprise else "Renseignez l'emprise du projet (page Projet et emprise) pour produire cette figure.")
 
-# 3. CLC
-bloc("clc", "Occupation du sol (Corine Land Cover 2018)", "Couche CLC 2018 sur le périmètre d'étude, avec la légende officielle.",
-     lambda: figures.carte_wms_perimetre(t.communes, "LANDCOVER.CLC18_FR", "Occupation du sol du périmètre d'étude",
-                                         "Union européenne – Copernicus / SDES, CORINE Land Cover 2018 ; IGN, Géoplateforme",
-                                         "Corine Land Cover 2018, nomenclature en 44 postes"), ("clc2018", "plan_ign"))
+# 3. CLC (dernier millésime publié)
+_clc, _clc_an = CAT.couche_annuelle("clc")
+bloc("clc", f"Occupation du sol (Corine Land Cover {_clc_an})", f"Couche CLC {_clc_an} sur le périmètre d'étude, avec la légende officielle.",
+     lambda: figures.carte_wms_perimetre(t.communes, _clc, "Occupation du sol du périmètre d'étude",
+                                         f"Union européenne – Copernicus / SDES, CORINE Land Cover {_clc_an} ; IGN, Géoplateforme",
+                                         f"Corine Land Cover {_clc_an}, nomenclature en 44 postes"), (f"clc:{_clc_an}", "plan_ign"))
 
 # 4. Sols
 bloc("sols", "Sols dominants", "Carte harmonisée des sols dominants (Référentiels régionaux pédologiques, 1/250 000).",

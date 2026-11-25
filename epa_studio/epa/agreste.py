@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .config import ODT_BASE, ODT_RA2020_INDICATEURS
-from .http import DataSourceError, disk_cache, get, get_bytes
+from .http import DataSourceError, disk_cache, get, get_bytes, memo
 
 NIVEAUX = {"commune": r"Communes \(\d{4}\)", "epci": r"EPCI \( ?\d{4}\)", "departement": r"Départements", "region": r"Régions \(2016\)"}
 
@@ -71,6 +71,7 @@ def indicateur_odt(code: str, niveau: str) -> pd.DataFrame:
     return out
 
 
+@memo(3600)
 def ra2020(niveau: str) -> pd.DataFrame:
     """Table des 4 indicateurs RA 2020 de l'Observatoire des territoires pour un niveau géographique."""
     base = None

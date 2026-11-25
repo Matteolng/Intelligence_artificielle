@@ -32,4 +32,8 @@ try:
     etape("OTEX communale", otex.otex_communes)
 except ImportError:
     pass
+import json  # noqa: E402
+from datetime import date  # noqa: E402
+
+(ROOT / "demo_cache" / "MANIFEST.json").write_text(json.dumps({"genere_le": date.today().isoformat()}), encoding="utf-8")
 print("Taille :", round(sum(p.stat().st_size for p in (ROOT / "demo_cache").rglob("*.pkl")) / 1e6, 1), "Mo")

@@ -24,5 +24,12 @@ def lire_otex(contenu: bytes) -> pd.DataFrame:
 
 
 @disk_cache("odt")
+def _otex(url: str) -> pd.DataFrame:
+    return lire_otex(get_bytes(url))
+
+
 def otex_communes() -> pd.DataFrame:
-    return lire_otex(get_bytes(OTEX_COMMUNES_CSV))
+    """Dernière version publiée sur data.gouv.fr (URL relue par le catalogue), mise en cache par URL."""
+    from .catalogue import ressource
+
+    return _otex(ressource("otex")[0])

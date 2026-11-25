@@ -1,6 +1,8 @@
 import plotly.express as px
 import streamlit as st
 
+from epa import catalogue as CAT
+
 from epa.sources import enregistrer
 from streamlit_folium import st_folium
 
@@ -95,7 +97,7 @@ with tab2:
                 m = cartes.base_map(t.bounds)
                 cartes.add_territoire(m, t.communes)
                 cartes.add_points(m, eng, "Opérateurs bio engagés", "#6E9E3A", ["nom", "activites", "productions", "commune"])
-                cartes.add_wms(m, ["RPG 2025 – parcelles bio"], show=False)
+                cartes.add_wms(m, [CAT.NOM_RPG_BIO], show=False)
                 cartes.finalize(m)
                 st_folium(m, height=420, use_container_width=True, returned_objects=[], key="map_bio")
             st.dataframe(bio.drop(columns=["latitude", "longitude"]), hide_index=True, height=360)

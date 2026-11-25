@@ -5,7 +5,8 @@ from streamlit_folium import st_folium
 
 from epa import cartes, rpg
 from epa.analyse import fnum, texte_emprise
-from epa.config import FAMILLE_COLORS, RPG_LAYERS
+from epa import catalogue as CAT
+from epa.config import FAMILLE_COLORS
 from epa.http import DataSourceError
 from epa.projet import communes_concernees, surface_ha
 from epa.ui import hero, kpis, require_territoire, resultat, source, stocker, texte_auto
@@ -21,7 +22,8 @@ if emprise is None or emprise.empty:
     st.stop()
 
 rt = resultat("rpg")
-annee = rt["annee"] if rt else list(RPG_LAYERS)[0]
+RPG_LAYERS = CAT.rpg_couches()
+annee = rt["annee"] if rt and rt["annee"] in RPG_LAYERS else list(RPG_LAYERS)[0]
 re_ = resultat("rpg_emprise")
 if re_ is None or re_.get("annee") != annee:
     with st.spinner("Croisement de l'emprise avec le RPG…"):

@@ -122,7 +122,23 @@ def _cache_path(namespace: str, key: str):
     return d / f"{h}.pkl"
 
 
+def _age_demo_jours() -> float | None:
+    """Âge du cache livré, d'après son manifeste (la date des fichiers n'est pas fiable après un git clone)."""
+    import json
+    from datetime import date
+
+    try:
+        d = json.loads((DEMO_CACHE_DIR / "MANIFEST.json").read_text(encoding="utf-8"))["genere_le"]
+        return (date.today() - date.fromisoformat(d)).days
+    except Exception:
+        return None
+
+
 def _demo_path(namespace: str, key: str):
+    """Fichier du cache livré, seulement s'il est encore valide (même durée que le cache de l'espace de noms)."""
+    age = _age_demo_jours()
+    if age is None or age > CACHE_TTL_DAYS.get(namespace, 30):
+        return None
     h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
     p = DEMO_CACHE_DIR / namespace / f"{h}.pkl"
     return p if p.exists() else None
@@ -144,7 +160,7 @@ def disk_cache(namespace: str) -> Callable:
                 except Exception:  # cache corrompu : on recalcule
                     path.unlink(missing_ok=True)
             demo = _demo_path(namespace, key)
-            if demo is not None:  # cache de démonstration livré : pas d'expiration (données datées dans la bibliographie)
+            if demo is not None:  # cache livré, encore valide d'après son manifeste
                 try:
                     with open(demo, "rb") as f:
                         return pickle.load(f)
@@ -158,6 +174,32 @@ def disk_cache(namespace: str) -> Callable:
             return result
 
         wrapper.cache_namespace = namespace  # type: ignore[attr-defined]
+        return wrapper
+
+    return deco
+
+
+def memo(ttl_s: float = 3600) -> Callable:
+    """Mémoire en cours d'exécution (arguments hachables), valable `ttl_s` secondes. Renvoie une copie des tableaux
+    (DataFrame, GeoDataFrame, dict, list) pour qu'une modification par l'appelant n'altère pas la valeur mémorisée."""
+    def deco(fn: Callable) -> Callable:
+        store: dict = {}
+        verrou = threading.Lock()
+
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            k = (args, tuple(sorted(kwargs.items())))
+            with verrou:
+                hit = store.get(k)
+            if hit and time.monotonic() - hit[0] < ttl_s:
+                v = hit[1]
+            else:
+                v = fn(*args, **kwargs)
+                with verrou:
+                    store[k] = (time.monotonic(), v)
+            return v.copy() if hasattr(v, "copy") else v
+
+        wrapper.cache_clear = store.clear  # type: ignore[attr-defined]
         return wrapper
 
     return deco

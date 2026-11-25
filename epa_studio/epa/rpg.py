@@ -15,17 +15,34 @@ import pandas as pd
 from shapely.geometry import MultiPolygon, shape
 
 from .config import DATA_DIR, GPF_WFS, RPG_FAMILLES, RPG_GROUPES, RPG_PAGE_SIZE
-from .http import DataSourceError, disk_cache, get_json
+from .http import DataSourceError, disk_cache, get_json, memo
 from .territoire import L93, WGS84
 
 _FAMILLE_DE_GROUPE = {g: fam for fam, groupes in RPG_FAMILLES.items() for g in groupes}
 FAMILLE_PAR_LIBELLE = {RPG_GROUPES[g]: fam for g, fam in _FAMILLE_DE_GROUPE.items() if g in RPG_GROUPES}
 
 
+@disk_cache("catalogue")
+def _codes_cultures_wfs(couche: str) -> pd.DataFrame:
+    d = get_json(GPF_WFS, params={"SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature", "TYPENAMES": couche,
+                                  "COUNT": 2000, "OUTPUTFORMAT": "application/json"}, timeout=120)
+    return pd.DataFrame([f["properties"] for f in d.get("features", [])]).astype(str)
+
+
+@memo(3600)
 def codes_cultures() -> pd.DataFrame:
-    """Nomenclature des cultures du RPG (extraite de RPG.LATEST:codes_cultures)."""
-    df = pd.read_csv(DATA_DIR / "rpg_codes_cultures_2025.csv", dtype=str)
-    return df
+    """Nomenclature des cultures du RPG : table « codes_cultures » du dernier millésime publié (Géoplateforme),
+    complétée par la copie locale (2025) pour les codes absents ou si le service ne répond pas."""
+    local = pd.read_csv(DATA_DIR / "rpg_codes_cultures_2025.csv", dtype=str)
+    try:
+        from .catalogue import couche_codes_cultures
+
+        web = _codes_cultures_wfs(couche_codes_cultures())
+        if {"code_culture", "libelle_culture"} <= set(web.columns):
+            return pd.concat([web[["code_culture", "libelle_culture"]], local[["code_culture", "libelle_culture"]]]).drop_duplicates("code_culture")
+    except Exception:  # nomenclature locale en secours
+        pass
+    return local
 
 
 def _wfs_params(layer: str, bbox: tuple[float, float, float, float], start: int, count: int) -> dict:
@@ -54,9 +71,19 @@ def _features_to_rows(features: list[dict]) -> list[dict]:
     return rows
 
 
-@disk_cache("rpg")
 def fetch_rpg_bbox(layer: str, bbox: tuple[float, float, float, float]) -> gpd.GeoDataFrame:
-    """Télécharge toutes les parcelles RPG d'une emprise (pagination WFS)."""
+    """Télécharge toutes les parcelles RPG d'une emprise (pagination WFS).
+
+    Le cache est indexé par l'année réelle de la couche : quand « RPG.LATEST » passe à un nouveau millésime,
+    les anciennes données ne sont plus resservies.
+    """
+    from .catalogue import annee_de_couche
+
+    return _fetch_rpg_bbox(layer, bbox, annee_de_couche(layer))
+
+
+@disk_cache("rpg")
+def _fetch_rpg_bbox(layer: str, bbox: tuple[float, float, float, float], millesime: str) -> gpd.GeoDataFrame:
     first = get_json(GPF_WFS, params=_wfs_params(layer, bbox, 0, RPG_PAGE_SIZE), timeout=180)
     total = int(first.get("numberMatched") or first.get("totalFeatures") or 0)
     rows = _features_to_rows(first.get("features", []))

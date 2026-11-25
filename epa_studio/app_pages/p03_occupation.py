@@ -7,7 +7,8 @@ from streamlit_folium import st_folium
 
 from epa import bibliotheque, cartes, rpg
 from epa.analyse import fnum, texte_rpg
-from epa.config import FAMILLE_COLORS, RPG_LAYERS
+from epa import catalogue as CAT
+from epa.config import FAMILLE_COLORS
 from epa.http import DataSourceError
 from epa.ui import hero, kpis, progress_callback, require_territoire, resultat, source, stocker, texte_auto
 
@@ -17,6 +18,7 @@ require_territoire()
 t = st.session_state["territoire"]
 
 c1, c2 = st.columns([2, 1])
+RPG_LAYERS = CAT.rpg_couches()
 annee = c1.selectbox("Millésime du RPG", list(RPG_LAYERS), index=0)
 c2.write("")
 c2.write("")
@@ -105,7 +107,7 @@ with tab2:
     else:
         if len(g) > 12000:
             st.info(f"{fnum(len(g))} parcelles : affichage via le service WMS de l'IGN pour préserver la fluidité.")
-            cartes.add_wms(m, ["RPG 2025 – parcelles PAC"])
+            cartes.add_wms(m, [CAT.NOM_RPG_PAC])
         else:
             gp = g[["culture", "groupe", "famille", "surface_ha", "geometry"]].copy()
             gp["surface_ha"] = gp["surface_ha"].round(2)
@@ -128,7 +130,8 @@ with tab3:
 with tab4:
     st.caption("Compare l'assolement déclaré entre deux millésimes du RPG (les nomenclatures de cultures ont évolué depuis 2015 : "
                "comparer de préférence au niveau des groupes de cultures).")
-    ref = st.selectbox("Millésime de comparaison", [k for k in RPG_LAYERS if k != res["annee"]], index=5)
+    _autres = [k for k in RPG_LAYERS if k != res["annee"]]
+    ref = st.selectbox("Millésime de comparaison", _autres, index=min(4, len(_autres) - 1))
     if st.button("Comparer"):
         bar = st.progress(0.0, text="Téléchargement…")
         try:

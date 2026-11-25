@@ -32,8 +32,6 @@ CATALOGUE: dict[str, Source] = {
     "inao": Source("INAO", "Aires géographiques des AOC/AOP et des IGP/IG", "2025", "https://www.data.gouv.fr"),
     "dvf": Source("DGFiP / Cerema", "Demandes de valeurs foncières (DVF), API Données foncières", "consultation",
                   "https://apidf-preprod.cerema.fr"),
-    "clc2018": Source("Union européenne – Copernicus / SDES", "CORINE Land Cover – France métropolitaine", "2018",
-                      "https://data.geopf.fr/wms-r/wms (LANDCOVER.CLC18_FR)"),
     "sols": Source("INRAE – Gis Sol", "Les sols dominants de France métropolitaine – carte harmonisée (RRP 1/250 000)", "consultation",
                    "https://data.geopf.fr/wms-r/wms (INRAE_CARTE-SOLS)"),
     "ru_bdgsf": Source("INRAE – Gis Sol", "Carte de la réserve utile en eau issue de la Base de données géographique des sols "
@@ -66,9 +64,25 @@ def _rpg(annee: str) -> Source:
 
 
 def get(cle: str) -> Source:
-    """Clé du catalogue, ou « rpg:AAAA » pour un millésime du RPG. Clé inconnue → KeyError."""
+    """Clé du catalogue, « rpg:AAAA » ou « clc:AAAA » pour un millésime. Clé inconnue → KeyError.
+    Pour les fichiers data.gouv.fr suivis automatiquement (INAO, OTEX), la date de la version utilisée est ajoutée."""
+    if cle in ("inao", "otex"):
+        from dataclasses import replace
+
+        try:
+            from .catalogue import ressource
+
+            d = ressource("inao_ao" if cle == "inao" else "otex")[1]
+        except Exception:
+            d = ""
+        s = CATALOGUE[cle]
+        return replace(s, titre=f"{s.titre}, version du {d[8:10]}/{d[5:7]}/{d[:4]}") if d else s
     if cle.startswith("rpg:"):
         return _rpg(cle.split(":", 1)[1])
+    if cle.startswith("clc:"):
+        an = cle.split(":", 1)[1]
+        return Source("Union européenne – Copernicus / SDES", "CORINE Land Cover – France métropolitaine", an,
+                      f"https://data.geopf.fr/wms-r/wms (LANDCOVER.CLC{an[2:]}_FR)")
     return CATALOGUE[cle]
 
 

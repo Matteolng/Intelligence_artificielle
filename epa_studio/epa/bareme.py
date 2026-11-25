@@ -120,7 +120,7 @@ def correspondances(pra: pd.DataFrame, bareme: pd.DataFrame) -> pd.DataFrame:
     for _, p in pra.iterrows():
         n = _mots(p["nom"])
         b = bareme[bareme["departement"].astype(str) == str(p["departement"])]
-        hit = b[b["region_agricole"].map(lambda x: bool(n) and n <= _mots(x))]
+        hit = b[[bool(n) and n <= _mots(x) for x in b["region_agricole"]]]
         if hit.empty and len(b["region_agricole"].unique()) == 1:
             hit = b  # département sans découpage par région agricole
         for _, h in hit.iterrows():

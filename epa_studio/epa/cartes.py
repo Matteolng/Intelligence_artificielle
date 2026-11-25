@@ -66,7 +66,9 @@ def base_map(bounds, basemap: str = "Plan IGN", draw: bool = False) -> folium.Ma
 
 def add_wms(m: folium.Map, names: list[str], show: bool = True) -> None:
     for name in names:
-        cfg = WMS_LAYERS.get(name)
+        from .catalogue import couches_wms
+
+        cfg = couches_wms().get(name) or WMS_LAYERS.get(name)
         if not cfg:
             continue
         folium.WmsTileLayer(

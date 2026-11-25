@@ -1,5 +1,4 @@
 """Tests hors réseau : marque blanche, gabarits de phrases, sources, chiffres clés, composants."""
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -56,13 +55,13 @@ from epa import sources as S  # noqa: E402
 
 
 def test_citer_format():
-    assert S.citer("clc2018") == "Union européenne – Copernicus / SDES, CORINE Land Cover – France métropolitaine (2018)"
+    assert S.citer("clc:2018") == "Union européenne – Copernicus / SDES, CORINE Land Cover – France métropolitaine (2018)"
     assert "(2023)" in S.citer("rpg:2023")
 
 
 def test_bibliographie_dedoublonne_et_trie():
     state = {}
-    for c in ("ra2020", "clc2018", "ra2020"):
+    for c in ("ra2020", "clc:2018", "ra2020"):
         S.enregistrer(c, state)
     refs = S.bibliographie(state["sources_utilisees"])
     assert len(refs) == 2 and refs[0].startswith("Agreste") and "Consulté le" in refs[0]

@@ -1,10 +1,13 @@
-import importlib
 import pickle
 
 from epa import http
 
 
 def test_cache_repli_demo(tmp_path, monkeypatch):
+    import json
+    from datetime import date
+    (tmp_path / "demo").mkdir()
+    (tmp_path / "demo" / "MANIFEST.json").write_text(json.dumps({"genere_le": date.today().isoformat()}))
     monkeypatch.setattr(http, "CACHE_DIR", tmp_path / "user")
     monkeypatch.setattr(http, "DEMO_CACHE_DIR", tmp_path / "demo")
     calls = []
@@ -64,3 +67,17 @@ def test_demo_oublie_le_projet_precedent(monkeypatch):
     state = {"emprise": gpd.GeoDataFrame(geometry=[]), "projet_id": "abcdefabcdef", "communes_emprise": ["1"]}
     D.charger_demo(state, 45.9, 3.27, avec_emprise=False)
     assert "emprise" not in state and "projet_id" not in state and "communes_emprise" not in state
+
+
+def test_cache_livre_perime_ignore(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    monkeypatch.setattr(http, "DEMO_CACHE_DIR", tmp_path)
+    key = "k"
+    (tmp_path / "odt").mkdir()
+    (tmp_path / "odt" / (hashlib.sha256(key.encode()).hexdigest()[:32] + ".pkl")).write_bytes(pickle.dumps(1))
+    (tmp_path / "MANIFEST.json").write_text(json.dumps({"genere_le": "2020-01-01"}))
+    assert http._demo_path("odt", key) is None  # trop ancien : on retourne chercher les données à jour
+    from datetime import date
+    (tmp_path / "MANIFEST.json").write_text(json.dumps({"genere_le": date.today().isoformat()}))
+    assert http._demo_path("odt", key) is not None

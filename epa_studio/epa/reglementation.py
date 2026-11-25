@@ -221,7 +221,7 @@ REFERENTIEL: list[Item] = [
 
 SOURCES_DONNEES = [
     ("Découpage administratif (communes, EPCI, population)", "API Découpage administratif – geo.api.gouv.fr (DINUM)", "https://geo.api.gouv.fr", "Licence Ouverte 2.0"),
-    ("Registre parcellaire graphique (RPG 2015 à 2025)", "IGN / ASP – Géoplateforme (WFS, WMS)", "https://data.geopf.fr", "Licence Ouverte 2.0"),
+    ("Registre parcellaire graphique (RPG, de 2015 au dernier millésime publié)", "IGN / ASP – Géoplateforme (WFS, WMS)", "https://data.geopf.fr", "Licence Ouverte 2.0"),
     ("Recensement agricole 2020 (exploitations, SAU, évolutions 2010-2020)", "Agreste – via l'Observatoire des territoires (ANCT)", "https://www.observatoire-des-territoires.gouv.fr", "Licence Ouverte"),
     ("Établissements amont/aval, coopératives, CUMA", "API Recherche d'entreprises (SIRENE INSEE, RNE INPI)", "https://recherche-entreprises.api.gouv.fr", "Licence Ouverte"),
     ("Opérateurs en agriculture biologique", "Agence Bio – annuaire open data", "https://opendata.agencebio.org", "Licence Ouverte"),

@@ -1,5 +1,7 @@
 import pandas as pd
 import streamlit as st
+
+from epa import catalogue as CAT
 from streamlit_folium import st_folium
 
 from epa import cartes, projet as P
@@ -64,13 +66,13 @@ with tab2:
     fond = st.radio("Fond de carte", list(cartes.BASEMAPS), horizontal=True, index=1)
     bounds = tuple(emprise.total_bounds) if emprise is not None and not emprise.empty else t.bounds
     m = cartes.base_map(bounds, basemap=fond, draw=(mode == "Dessiner sur la carte"))
-    cartes.add_wms(m, ["RPG 2025 – parcelles PAC"], show=True)
+    cartes.add_wms(m, [CAT.NOM_RPG_PAC], show=True)
     cartes.add_territoire(m, t.communes)
     cartes.add_emprise(m, emprise)
     cartes.finalize(m)
     out = st_folium(m, height=560, use_container_width=True, key="map_emprise",
                     returned_objects=["all_drawings"] if mode == "Dessiner sur la carte" else [])
-    source("RPG 2025 (IGN/ASP) ; fonds IGN Géoplateforme.")
+    source(f"RPG {CAT.annee_rpg_recente()} (IGN/ASP) ; fonds IGN Géoplateforme.")
     if mode == "Dessiner sur la carte":
         st.caption("Dessinez un ou plusieurs polygones avec les outils à gauche de la carte, puis validez.")
         if st.button("Utiliser le dessin comme emprise", type="primary"):

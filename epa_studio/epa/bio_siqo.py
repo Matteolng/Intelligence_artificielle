@@ -81,12 +81,18 @@ def _read_inao(url: str) -> pd.DataFrame:
     return pd.read_csv(io.BytesIO(raw), sep=";", encoding="latin-1", dtype=str)
 
 
-@disk_cache("inao")
 def table_inao() -> pd.DataFrame:
-    """Table commune (CI) × aire géographique (IDA) × signe, toutes AOC/AOP/IGP/IG."""
-    ao = _read_inao(INAO_COMMUNES_AO_CSV)
-    ig = _read_inao(INAO_COMMUNES_IG_CSV)
-    prod = _read_inao(INAO_AIRES_PRODUITS_CSV)
+    """Table commune (CI) × aire géographique (IDA) × signe, toutes AOC/AOP/IGP/IG (dernières versions data.gouv.fr)."""
+    from .catalogue import ressource
+
+    return _table_inao(ressource("inao_ao")[0], ressource("inao_ig")[0], ressource("inao_produits")[0])
+
+
+@disk_cache("inao")
+def _table_inao(url_ao: str, url_ig: str, url_prod: str) -> pd.DataFrame:
+    ao = _read_inao(url_ao)
+    ig = _read_inao(url_ig)
+    prod = _read_inao(url_prod)
     ao = ao.rename(columns={"Aire géographique": "aire"})[["CI", "IDA", "aire"]]
     ig = ig.rename(columns={"Aire géographique": "aire"})
     if "Actual" in ig:
