@@ -58,3 +58,49 @@ def test_zones_hors_rpg():
     site = gpd.GeoDataFrame({"culture": ["Maïs"]}, geometry=[box(3.0, 45.0, 3.005, 45.01)], crs=4326)
     z = TD.zones_analyse(emp, site, None)
     assert list(z["zone"]) == ["site:1", "hors_rpg"]
+
+
+def test_phenologie_seuil_amplitude():
+    d = pd.date_range("2025-01-01", periods=12, freq="MS")
+    v = pd.Series([0.2, 0.2, 0.3, 0.6, 0.8, 0.8, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2], index=d)
+    p = TD.phenologie(v)
+    # amplitude 0,6 ; seuil 0,5 : franchi entre le 1er mars (0,3) et le 1er avril (0,6), puis entre le 1er juillet et le 1er août
+    assert p["debut"] > pd.Timestamp("2025-03-01") and p["debut"] < pd.Timestamp("2025-04-01")
+    assert pd.Timestamp("2025-07-01") <= p["fin"] < pd.Timestamp("2025-08-01")  # seuil atteint le 1er juillet (0,5)
+    assert TD.phenologie(pd.Series([0.7, 0.72, 0.75, 0.7, 0.71, 0.73], index=d[:6])) .get("debut") is None  # prairie stable
+
+
+def test_fourchette_et_position():
+    dates = pd.to_datetime(["2025-04-01", "2025-05-01"])
+    rows = [(d, f"voisin:{k}", "NDVI", 0.5 + 0.03 * k, 1) for d in dates for k in range(10)]
+    rows += [(dates[0], "site:1", "NDVI", 0.62, 1), (dates[1], "site:1", "NDVI", 0.40, 1)]
+    s = pd.DataFrame(rows, columns=["date", "zone", "indice", "valeur", "part_valide"])
+    z = gpd.GeoDataFrame({"zone": ["site:1"] + [f"voisin:{k}" for k in range(10)], "type": ["site"] + ["voisin"] * 10,
+                          "culture": ["Blé"] * 11}, geometry=[box(0, 0, 1, 1)] * 11, crs=4326)
+    f = TD.fourchette(s, z, "Blé")
+    assert len(f) == 2 and f.loc[0, "n"] == 10
+    pos = TD.position_fourchette(s[s["zone"] == "site:1"][["date", "valeur"]], f)
+    assert pos["dedans_pct"] == 50 and pos["sous"] == [dates[1]]
+
+
+def test_fourchette_limitee_a_l_annee_du_rpg():
+    rows = [(pd.Timestamp(f"{an}-05-01"), f"voisin:{k}", "NDVI", 0.8, 1) for an in (2025, 2026) for k in range(10)]
+    s = pd.DataFrame(rows, columns=["date", "zone", "indice", "valeur", "part_valide"])
+    z = gpd.GeoDataFrame({"zone": [f"voisin:{k}" for k in range(10)], "type": ["voisin"] * 10, "culture": ["Blé"] * 10},
+                         geometry=[box(0, 0, 1, 1)] * 10, crs=4326)
+    assert list(TD.fourchette(s, z, "Blé", annee=2025)["date"].dt.year) == [2025]
+    assert TD.mois_txt([pd.Timestamp("2025-06-03"), pd.Timestamp("2025-07-09"), pd.Timestamp("2025-06-20")]) == "juin 2025 et juillet 2025"
+
+
+def test_voisinage_dans_la_saison_de_la_culture():
+    # voisins : blé, pic fin avril ; parcelle du site : même blé, plus un couvert d'hiver très vert en janvier
+    d = pd.to_datetime(["2025-01-10", "2025-02-10", "2025-03-10", "2025-04-10", "2025-04-30", "2025-05-30", "2025-06-30",
+                        "2025-07-30", "2025-08-30", "2025-09-30"])
+    prof = [0.3, 0.3, 0.45, 0.75, 0.85, 0.7, 0.35, 0.2, 0.2, 0.2]
+    rows = [(dd, f"voisin:{k}", "NDVI", v + 0.005 * k, 1) for k in range(10) for dd, v in zip(d, prof)]
+    rows += [(dd, "site:1", "NDVI", v, 1) for dd, v in zip(d, [0.95] + prof[1:])]
+    s = pd.DataFrame(rows, columns=["date", "zone", "indice", "valeur", "part_valide"])
+    z = gpd.GeoDataFrame({"zone": ["site:1"] + [f"voisin:{k}" for k in range(10)], "type": ["site"] + ["voisin"] * 10,
+                          "culture": ["Blé"] * 11}, geometry=[box(0, 0, 1, 1)] * 11, crs=4326)
+    r = TD.voisinage(s, z, 2025).iloc[0]
+    assert r["NDVI maximal"] == 0.85 and abs(r["Décalage du pic (jours)"]) < 7  # le couvert de janvier est hors saison

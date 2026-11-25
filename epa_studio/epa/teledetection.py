@@ -269,6 +269,8 @@ def analyser(emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFrame, debut: str, fin
 # ---------------------------------------------------------------------------
 
 REGLES = {
+    "saison": "début et fin de saison : passage à 50 % de l'amplitude du NDVI de l'année (méthode du seuil d'amplitude, TIMESAT)",
+    "hiver": "couverture hivernale : part des dates de novembre à février avec un NDVI ≥ 0,3",
     "sol_nu": "sol nu probable : NDVI < 0,25 et BSI > 0",
     "cycle": "cycle de végétation : un pic de NDVI ≥ 0,5, séparé du pic suivant par un passage sous 0,3",
     "eau": "eau libre probable : MNDWI > 0",
@@ -284,6 +286,92 @@ def cycles(ndvi: pd.Series, haut: float = 0.5, bas: float = 0.3) -> int:
         elif en_haut and v < bas:
             en_haut = False
     return n
+
+
+# Repères généraux de lecture du NDVI : USGS, « NDVI, the Foundation for Remote Sensing Phenology »
+# (https://www.usgs.gov/special-topics/remote-sensing-phenology/science/ndvi-foundation-remote-sensing-phenology)
+REPERES_NDVI = [(-0.2, 0.1, "roche, sable, neige, sol nu", "rgba(138,122,92,.10)"),
+                (0.2, 0.5, "végétation clairsemée, prairie, culture en fin de cycle", "rgba(220,229,188,.35)"),
+                (0.6, 0.9, "végétation dense, culture à son pic", "rgba(86,101,62,.14)")]
+SEUIL_PHENO = 0.5  # fraction de l'amplitude saisonnière (méthode du seuil d'amplitude, Jönsson et Eklundh 2004, TIMESAT)
+
+
+def _franchissement(d0, v0, d1, v1, seuil):
+    """Date d'interpolation linéaire où la courbe franchit `seuil` entre deux observations."""
+    if v1 == v0:
+        return d1
+    k = (seuil - v0) / (v1 - v0)
+    return d0 + (d1 - d0) * float(min(max(k, 0.0), 1.0))
+
+
+def phenologie(ndvi: pd.Series) -> dict:
+    """Début, pic et fin de la saison principale (seuil à 50 % de l'amplitude). ndvi : série indexée par date."""
+    s = ndvi.dropna().sort_index()
+    if len(s) < 5:
+        return {}
+    lisse = s.rolling(3, center=True, min_periods=1).median()
+    ipic = lisse.idxmax()
+    vmin, vmax = float(lisse.min()), float(lisse.max())
+    amp = vmax - vmin
+    if amp < 0.2:  # pas de saison marquée (prairie stable, sol nu permanent, couvert permanent)
+        return {"pic": ipic, "ndvi_pic": vmax, "amplitude": amp}
+    seuil = vmin + SEUIL_PHENO * amp
+    avant, apres = lisse[:ipic], lisse[ipic:]
+    sos = eos = None
+    for (d0, v0), (d1, v1) in zip(list(avant.items())[::-1][1:], list(avant.items())[::-1][:-1]):
+        if v0 < seuil <= v1:
+            sos = _franchissement(d0, v0, d1, v1, seuil)
+            break
+    for (d0, v0), (d1, v1) in zip(list(apres.items())[:-1], list(apres.items())[1:]):
+        if v0 >= seuil > v1:
+            eos = _franchissement(d0, v0, d1, v1, seuil)
+            break
+    out = {"pic": ipic, "ndvi_pic": vmax, "amplitude": amp, "debut": sos, "fin": eos}
+    if sos is not None and eos is not None:
+        out["duree_j"] = int((eos - sos).days)
+    return out
+
+
+def fourchette(series: pd.DataFrame, zones: gpd.GeoDataFrame, culture: str, indice: str = "NDVI", n_min: int = 8,
+               annee: int | None = None) -> pd.DataFrame:
+    """Par date : 25e centile, médiane et 75e centile des parcelles voisines de la culture donnée (≥ n_min parcelles).
+
+    `annee` : limiter aux dates de l'année du RPG dont viennent les cultures (elles changent d'une année à l'autre).
+    """
+    vz = zones[(zones["type"] == "voisin") & (zones["culture"] == culture)]["zone"]
+    s = series[series["zone"].isin(vz) & (series["indice"] == indice)]
+    if annee is not None:
+        s = s[s["date"].dt.year == annee]
+    if s.empty:
+        return pd.DataFrame(columns=["date", "p25", "p50", "p75", "n"])
+    g = s.groupby("date")["valeur"]
+    f = pd.DataFrame({"p25": g.quantile(0.25), "p50": g.median(), "p75": g.quantile(0.75), "n": g.count()}).reset_index()
+    return f[f["n"] >= n_min].sort_values("date").reset_index(drop=True)
+
+
+def mois_txt(dates) -> str:
+    """« juin et juillet 2025 » à partir d'une liste de dates."""
+    ms = sorted({(pd.Timestamp(d).year, pd.Timestamp(d).month) for d in dates})
+    if not ms:
+        return ""
+    noms = [f"{MOIS_LONG[m - 1]} {a}" for a, m in ms]
+    return noms[0] if len(noms) == 1 else ", ".join(noms[:-1]) + " et " + noms[-1]
+
+
+MOIS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+def position_fourchette(serie: pd.DataFrame, f: pd.DataFrame, fenetre=None) -> dict:
+    """Part des dates d'une parcelle dans la fourchette des voisines (dans la saison si `fenetre`), et périodes sous / au-dessus."""
+    m = serie.merge(f, on="date")
+    if fenetre is not None:
+        m = m[(m["date"] >= fenetre[0]) & (m["date"] <= fenetre[1])]
+    if m.empty:
+        return {}
+    dedans = (m["valeur"] >= m["p25"]) & (m["valeur"] <= m["p75"])
+    sous = m.loc[m["valeur"] < m["p25"], "date"]
+    dessus = m.loc[m["valeur"] > m["p75"], "date"]
+    return {"n": len(m), "dedans_pct": round(100 * float(dedans.mean())), "sous": list(sous), "dessus": list(dessus)}
 
 
 MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
@@ -303,6 +391,8 @@ def bilan(series: pd.DataFrame, zones: gpd.GeoDataFrame) -> pd.DataFrame:
         ete = g[g["date"].dt.month.isin([6, 7, 8])]
         imax = g["NDVI"].idxmax()
         z = info.get(zone, {"type": "emprise", "culture": None})
+        ph = phenologie(g.set_index("date")["NDVI"])
+        hiver = g[g["date"].dt.month.isin([11, 12, 1, 2])]
         rows.append({
             "Zone": zone, "Type": z["type"] if zone != "emprise" else "emprise entière",
             "Culture RPG (dernière)": z["culture"] if isinstance(z["culture"], str) else "",
@@ -313,32 +403,57 @@ def bilan(series: pd.DataFrame, zones: gpd.GeoDataFrame) -> pd.DataFrame:
             "Mois de sol nu": ", ".join(MOIS[m - 1] for m in sorted(g.loc[nu, "date"].dt.month.unique())),
             "NDMI moyen juin-août": round(float(ete["NDMI"].mean()), 2) if not ete.empty else None,
             "Dates avec eau libre": int((g["MNDWI"] > 0).sum()),
+            "Début de saison": ph["debut"].date().isoformat() if ph.get("debut") is not None else "",
+            "Fin de saison": ph["fin"].date().isoformat() if ph.get("fin") is not None else "",
+            "Durée de saison (j)": ph.get("duree_j"),
+            "Couverture hivernale (% des dates)": round(100 * float((hiver["NDVI"] >= 0.3).mean())) if not hiver.empty else None,
         })
     return pd.DataFrame(rows)
 
 
+def fenetre_saison(mediane: pd.Series, marge_j: int = 30):
+    """Saison de la culture d'après la courbe médiane des voisines : (début − marge, fin + marge), ou None."""
+    ph = phenologie(mediane)
+    if ph.get("debut") is None or ph.get("fin") is None:
+        return None
+    return ph["debut"] - pd.Timedelta(days=marge_j), ph["fin"] + pd.Timedelta(days=marge_j)
+
+
 def voisinage(series: pd.DataFrame, zones: gpd.GeoDataFrame, annee: int, n_min: int = 8) -> pd.DataFrame:
-    """Rang du NDVI maximal de chaque parcelle du site parmi les parcelles voisines de même culture (même année RPG)."""
+    """Rang du NDVI maximal de chaque parcelle du site parmi les parcelles voisines de même culture (même année RPG).
+
+    Le maximum et le pic sont pris dans la saison de la culture (début et fin de saison médians des voisines, ± 30 jours),
+    pour qu'un couvert d'interculture ou une repousse ne fausse pas la comparaison.
+    """
     s = series[(series["indice"] == "NDVI") & (series["date"].dt.year == annee)]
     if s.empty:
         return pd.DataFrame()
-    mx = s.groupby("zone")["valeur"].max()
+    nd = s.pivot_table(index="date", columns="zone", values="valeur")
     z = zones.set_index("zone")
     rows = []
     for zone in [i for i in z.index if i.startswith("site:")]:
         cult = z.loc[zone, "culture"]
-        if zone not in mx or not isinstance(cult, str) or not cult:
+        if zone not in nd or not isinstance(cult, str) or not cult:
             continue
-        vois = [v for v in z.index[(z["type"] == "voisin") & (z["culture"] == cult)] if v in mx]
+        vois = [v for v in z.index[(z["type"] == "voisin") & (z["culture"] == cult)] if v in nd]
         if len(vois) < n_min:
             rows.append({"Parcelle": zone, "Culture": cult, "Parcelles voisines comparées": len(vois),
-                         "NDVI maximal": round(mx[zone], 2), "Rang (percentile)": None,
+                         "NDVI maximal": round(float(nd[zone].max()), 2), "Rang (percentile)": None,
                          "Lecture": f"moins de {n_min} parcelles voisines de même culture : comparaison non significative"})
             continue
+        med = nd[vois].median(axis=1).dropna()
+        fen = fenetre_saison(med)
+        w = nd.loc[fen[0]:fen[1]] if fen else nd
+        mx = w.max()
         pct = 100 * float((mx[vois] < mx[zone]).mean())
+        decal = int((w[zone].idxmax() - w[vois].median(axis=1).idxmax()).days) if w[zone].notna().any() else None
+        lect = ("au-dessus de toutes les parcelles voisines de même culture" if pct >= 100 else
+                "en dessous de toutes les parcelles voisines de même culture" if pct <= 0 else
+                f"au-dessus de {round(pct)} % des parcelles voisines de même culture")
         rows.append({"Parcelle": zone, "Culture": cult, "Parcelles voisines comparées": len(vois),
-                     "NDVI maximal": round(mx[zone], 2), "Médiane des voisines": round(float(mx[vois].median()), 2),
-                     "Rang (percentile)": round(pct), "Lecture": f"au-dessus de {round(pct)} % des parcelles voisines de même culture"})
+                     "Saison comparée": f"{fen[0].strftime('%d/%m')} – {fen[1].strftime('%d/%m/%Y')}" if fen else f"année {annee}",
+                     "NDVI maximal": round(float(mx[zone]), 2), "Médiane des voisines": round(float(mx[vois].median()), 2),
+                     "Rang (percentile)": round(pct), "Décalage du pic (jours)": decal, "Lecture": lect})
     return pd.DataFrame(rows)
 
 
@@ -360,8 +475,11 @@ def phrases(b: pd.DataFrame, v: pd.DataFrame, noms: dict[str, str]) -> list[str]
         out.append(txt + ".")
     if not v.empty:
         for _, r in v.dropna(subset=["Rang (percentile)"]).iterrows():
+            dec = r.get("Décalage du pic (jours)")
+            dtxt = (f" ; pic {abs(int(dec))} jours {'plus tard' if dec > 0 else 'plus tôt'} que la médiane des voisines"
+                    if dec is not None and pd.notna(dec) and abs(dec) >= 7 else "")
             out.append(f"{noms.get(r['Parcelle'], r['Parcelle'])} : NDVI maximal {str(r['NDVI maximal']).replace('.', ',')}, "
-                       f"{r['Lecture']} ({int(r['Parcelles voisines comparées'])} parcelles).")
+                       f"{r['Lecture']} ({int(r['Parcelles voisines comparées'])} parcelles){dtxt}.")
     return out
 
 

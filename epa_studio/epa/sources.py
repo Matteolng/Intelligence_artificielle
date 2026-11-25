@@ -44,6 +44,11 @@ CATALOGUE: dict[str, Source] = {
     "asi": Source("Montero D. et al.", "A standardized catalogue of spectral indices to advance the use of remote sensing in Earth "
                   "system research, Scientific Data 10:197, doi:10.1038/s41597-023-02096-0", "2023",
                   "https://github.com/awesome-spectral-indices/awesome-spectral-indices"),
+    "usgs_ndvi": Source("USGS", "NDVI, the Foundation for Remote Sensing Phenology (repères de valeurs du NDVI)", "consultation",
+                        "https://www.usgs.gov/special-topics/remote-sensing-phenology/science/ndvi-foundation-remote-sensing-phenology"),
+    "timesat": Source("Jönsson P., Eklundh L.", "TIMESAT – a program for analyzing time-series of satellite sensor data, "
+                      "Computers & Geosciences 30:833-845 (méthode du seuil d'amplitude)", "2004",
+                      "https://www.nateko.lu.se/sv/lars-eklundh/publikation/6c6391c2-1d30-4311-8cbc-5092ae9a369c"),
     "ortho": Source("IGN", "Photographies aériennes (ORTHOIMAGERY.ORTHOPHOTOS), date de prise de vue variable selon le département",
                     "consultation", "https://data.geopf.fr/wmts"),
     "plan_ign": Source("IGN", "Plan IGN v2", "consultation", "https://data.geopf.fr/wmts"),

@@ -388,7 +388,7 @@ def animation_ndvi(frames: list, emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFr
 
 
 def series_indices(series: pd.DataFrame, zones_affichees: list[str], noms: dict[str, str], indices=("NDVI", "BSI", "NDMI"),
-                   note: str = "") -> bytes | None:
+                   note: str = "", fourchette: pd.DataFrame | None = None, fourchette_label: str = "") -> bytes | None:
     """Petits multiples : un panneau par indice, une courbe par zone affichée (7 au plus, ordre fixe des couleurs)."""
     s = series[series["zone"].isin(zones_affichees)]
     if s.empty:
@@ -398,6 +398,14 @@ def series_indices(series: pd.DataFrame, zones_affichees: list[str], noms: dict[
     fig.subplots_adjust(left=0.07, right=0.78, top=0.9, bottom=0.08, hspace=0.18)
     axs = np.atleast_1d(axs)
     for ax, ind in zip(axs, indices):
+        if ind == "NDVI":
+            from .teledetection import REPERES_NDVI
+            for b0, b1, lab, _ in REPERES_NDVI:
+                ax.axhspan(b0, b1, color="#EEF0E6" if b1 < 0.6 else "#E3E8D6", zorder=0, lw=0)
+                ax.text(1.0, b1, f" {lab}", transform=ax.get_yaxis_transform(), fontsize=6.5, color=SECOND, va="top", ha="left")
+            if fourchette is not None and not fourchette.empty:
+                ax.fill_between(fourchette["date"], fourchette["p25"], fourchette["p75"], color="#8C9180", alpha=0.25, lw=0,
+                                label=fourchette_label or "fourchette des voisines", zorder=1)
         for i, z in enumerate(site):
             d = s[(s["zone"] == z) & (s["indice"] == ind)].sort_values("date")
             ax.plot(d["date"], d["valeur"], color=SERIES[i], lw=1.6, marker="o", ms=2.5, label=noms.get(z, z))

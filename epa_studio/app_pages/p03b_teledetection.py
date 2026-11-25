@@ -10,7 +10,7 @@ from epa.http import DataSourceError
 from epa.projet import surface_ha
 from epa.sources import enregistrer
 from epa.territoire import L93
-from epa.theme import carte_indice, courbes, ornement, photo_territoire
+from epa.theme import calendrier, carte_indice, courbes, ornement, photo_territoire
 from epa.ui import (bouton_png, entete_nuit, manquant, phrase, progress_callback, require_territoire, resultat, sources, stocker,
                     tuile_comparee, tuiles)
 
@@ -80,13 +80,17 @@ if (lancer or (st.session_state.get("mode_demo") and res is None)) and annees:
     b_ = TD.bilan(out["series"], zones)
     if not b_.empty:
         b_.insert(0, "Zone (nom)", b_["Zone"].map(noms).fillna(b_["Zone"]))
-    an_ref = max(a for a in annees if a < annee) if any(a < annee for a in annees) else max(annees)
+    an_ref = int(next(iter(RPG_LAYERS))[:4])  # cultures des parcelles = RPG le plus récent : comparaisons sur cette année-là
     v_ = TD.voisinage(out["series"], zones, an_ref) if rayon else pd.DataFrame()
     if not v_.empty:
         v_.insert(0, "Parcelle (nom)", v_["Parcelle"].map(noms).fillna(v_["Parcelle"]))
     gif = figures.animation_ndvi(out["anim"], emprise, zs, out["bbox_anim"])
+    cults = zs[zs["zone"].isin(affichees) & zs["culture"].notna()]
+    c_princ = cults.groupby("culture")["ha"].sum().idxmax() if not cults.empty else None
+    f_ndvi = TD.fourchette(out["series"], zones, c_princ, annee=an_ref) if c_princ and rayon else None
     png = figures.series_indices(out["series"], affichees, noms,
-                                 note=f"{len(affichees)} plus grandes zones de l'emprise sur {len(zs)}" if len(zs) > len(affichees) else "")
+                                 note=f"{len(affichees)} plus grandes zones de l'emprise sur {len(zs)}" if len(zs) > len(affichees) else "",
+                                 fourchette=f_ndvi, fourchette_label=f"parcelles voisines – {c_princ.lower()} (25e-75e centile)" if c_princ else "")
     res = {"cle": cle, "series": out["series"].assign(zone_nom=out["series"]["zone"].map(noms)), "bilan": b_, "voisinage": v_,
            "zones": zones, "noms": noms, "affichees": affichees, "annee_ref": an_ref, "images": out["images"],
            "dates": out["dates_valides"], "erreurs": out["erreurs"], "figures": {"satellite_ndvi_anime": gif, "satellite_indices": png}}
@@ -100,6 +104,8 @@ if res["cle"] != cle:
     st.caption("Résultats affichés pour d'autres paramètres : relancez l'analyse pour les mettre à jour.")
 enregistrer("s2")
 enregistrer("asi")
+enregistrer("usgs_ndvi")
+enregistrer("timesat")
 enregistrer(f"rpg:{next(iter(RPG_LAYERS))[:4]}")
 
 S, z, noms = res["series"], res["zones"], res["noms"]
@@ -131,29 +137,94 @@ with g2:
 
 # --- Courbes animées ---------------------------------------------------------------------------------------------------
 st.markdown("### Les courbes, parcelle par parcelle")
-ind = st.segmented_control("Indicateur", list(TD.INDICES), default="NDVI", label_visibility="collapsed") or "NDVI"
+ci, cp = st.columns([1, 2.2])
+ind = ci.segmented_control("Indicateur", list(TD.INDICES), default="NDVI", label_visibility="collapsed") or "NDVI"
+choix = cp.multiselect("Parcelles affichées", res["affichees"], default=res["affichees"][:4], format_func=lambda k: noms.get(k, k),
+                       placeholder="Choisir des parcelles", label_visibility="collapsed")
+choix = choix or res["affichees"][:1]
 serie = {noms.get(k, k): [(d, v) for d, v in S[(S["zone"] == k) & (S["indice"] == ind)].sort_values("date")[["date", "valeur"]].itertuples(index=False)]
-         for k in res["affichees"]}
-ref, ref_lab = None, ""
-cult_princ = z.set_index("zone").loc[[a for a in res["affichees"] if a.startswith("site:")], "culture"].dropna()
-if not cult_princ.empty:
-    c0 = cult_princ.mode().iloc[0]
-    vz = z[(z["type"] == "voisin") & (z["culture"] == c0)]["zone"]
-    m = S[S["zone"].isin(vz) & (S["indice"] == ind)].groupby("date")["valeur"].median()
-    if len(vz) >= 8 and not m.empty:
-        ref, ref_lab = list(m.sort_index().items()), f"médiane de {len(vz)} parcelles voisines – {c0.lower()}"
+         for k in choix}
+ref, ref_lab, fch, c0 = None, "", None, None
+_zs = z[z["zone"].isin([a for a in choix if a.startswith("site:")]) & z["culture"].notna()].copy()
+if not _zs.empty:
+    _zs["ha"] = _zs.to_crs(L93).area / 1e4
+    c0 = _zs.groupby("culture")["ha"].sum().idxmax()
+    f_ind = TD.fourchette(S, z, c0, ind, annee=res["annee_ref"])
+    if not f_ind.empty:
+        ref = list(zip(f_ind["date"], f_ind["p50"]))
+        ref_lab = f"médiane des parcelles voisines – {c0.lower()} au RPG {res['annee_ref']} ({int(f_ind['n'].max())} au plus par date)"
+        fch = list(zip(f_ind["date"], f_ind["p25"], f_ind["p75"]))
 I = TD.INDICES[ind]
-st.markdown(courbes(serie, figures.SERIES, I.vmin, I.vmax, ref, ref_lab), unsafe_allow_html=True)
-st.caption(f"{I.code} : {I.montre} Survolez un point pour lire sa date et sa valeur.")
+st.markdown(courbes(serie, figures.SERIES, I.vmin, I.vmax, ref, ref_lab,
+                    bandes=TD.REPERES_NDVI if ind == "NDVI" else None, fourchette=fch), unsafe_allow_html=True)
+st.caption(f"{I.code} : {I.montre} " + ("Bandes de fond : repères de lecture de l'USGS. " if ind == "NDVI" else "")
+           + ("Bande grise : la moitié centrale des parcelles voisines de même culture, la même année ; une courbe qui en sort "
+              "s'écarte du comportement local. " if fch else "") + "Survolez un point pour lire sa date et sa valeur.")
 
-for p in TD.phrases(res["bilan"], res["voisinage"], noms):
+with st.expander("Lire ces courbes sans être spécialiste"):
+    st.markdown(
+        "- **Repères généraux du NDVI** (USGS) : 0,1 ou moins pour la roche, le sable, la neige ou le sol nu ; environ 0,2 à 0,5 "
+        "pour une végétation clairsemée, une prairie ou une culture en fin de cycle ; environ 0,6 à 0,9 pour une végétation dense "
+        "ou une culture à son pic.\n"
+        "- **Référence locale** : la bande grise regroupe la moitié centrale des parcelles voisines déclarées avec la même culture, "
+        "la même année : même météo, mêmes sols, même calendrier. C'est la comparaison la plus juste.\n"
+        "- **Une culture d'hiver** (blé, orge, colza) monte au printemps et chute à la récolte en été ; **une culture de printemps** "
+        "(maïs, tournesol) culmine en été ; **une prairie** reste haute presque toute l'année.\n"
+        "- **Les dates clés** (début, pic, fin de saison) sont calculées quand la courbe franchit la moitié de son amplitude annuelle "
+        "(méthode du seuil d'amplitude, logiciel TIMESAT).")
+
+_toutes = TD.phrases(res["bilan"], res["voisinage"], noms)
+_vis = [noms.get(k, k) for k in choix] + ["Emprise entière"]
+_haut = sorted([p for p in _toutes if any(p.startswith(n) for n in _vis)])
+_reste = sorted([p for p in _toutes if p not in _haut])
+for p in _haut:
     phrase(p)
+if _reste:
+    with st.expander(f"Phrases des {len(_reste)} autres zones"):
+        for p in _reste:
+            phrase(p)
+if c0:
+    f_nd = TD.fourchette(S, z, c0, "NDVI", annee=res["annee_ref"])
+    fen = TD.fenetre_saison(f_nd.set_index("date")["p50"]) if not f_nd.empty else None
+    for k in [a for a in choix if a.startswith("site:") and z.set_index("zone").loc[a, "culture"] == c0]:
+        pos = TD.position_fourchette(S[(S["zone"] == k) & (S["indice"] == "NDVI")][["date", "valeur"]], f_nd, fen)
+        if pos:
+            periode = f"pendant la saison du {c0.lower()} ({fen[0].strftime('%d/%m')} – {fen[1].strftime('%d/%m/%Y')})" if fen else f"en {res['annee_ref']}"
+            txt = (f"{noms.get(k, k)} : {periode}, {pos['dedans_pct']} % des {pos['n']} dates dans la fourchette des "
+                   f"parcelles voisines")
+            if pos["sous"]:
+                txt += f" ; en dessous en {TD.mois_txt(pos['sous'])}"
+            if pos["dessus"]:
+                txt += f" ; au-dessus en {TD.mois_txt(pos['dessus'])}"
+            phrase(txt + ".")
+
+# --- Calendrier cultural observé --------------------------------------------------------------------------------------------
+st.markdown('<h3>Calendrier cultural <em style="color:var(--accent)">observé</em></h3>', unsafe_allow_html=True)
+lignes_cal = []
+for k in choix:
+    nd = S[(S["zone"] == k) & (S["indice"] == "NDVI")].set_index("date")["valeur"].sort_index()
+    jal = []
+    for an, g in nd.groupby(nd.index.year):
+        ph = TD.phenologie(g)
+        jal += [(ph.get("debut"), f"Début de saison {an}"), (ph.get("pic"), f"Pic {an}"), (ph.get("fin"), f"Fin de saison {an}")]
+    lignes_cal.append({"nom": noms.get(k, k), "points": list(nd.items()), "jalons": jal})
+if c0 and ref:
+    _fm = TD.fourchette(S, z, c0, "NDVI", annee=res["annee_ref"])
+    lignes_cal.append({"nom": f"Voisines – {c0.lower()} {res['annee_ref']}", "points": [(d, v) for d, v in _fm[["date", "p50"]].itertuples(index=False)],
+                       "jalons": [(TD.phenologie(_fm.set_index('date')['p50']).get(k), f"{lab} (voisines)") for k, lab in
+                                  (("debut", "Début de saison"), ("pic", "Pic"), ("fin", "Fin de saison"))]})
+if lignes_cal:
+    st.markdown(calendrier(lignes_cal, S["date"].min(), S["date"].max()), unsafe_allow_html=True)
+    st.caption("Chaque bande suit le NDVI de la parcelle au fil des dates sans nuage : beige pour le sol nu, vert foncé pour une "
+               "végétation dense. Les triangles marquent le début, le pic et la fin de chaque saison. Survolez pour lire les dates.")
 
 # --- Tableaux -------------------------------------------------------------------------------------------------------------
 st.markdown("### Bilan par parcelle et par année")
 if not res["bilan"].empty:
     st.dataframe(res["bilan"].drop(columns=["Zone"]), hide_index=True, width="stretch")
 st.caption("Règles de lecture de l'outil (repères indicatifs, à confirmer sur le terrain) : " + " ; ".join(TD.REGLES.values()) + ".")
+if res["annee_ref"] not in annees:
+    st.caption(f"Les comparaisons au voisinage portent sur {res['annee_ref']}, année du RPG utilisé : ajoutez-la aux années analysées.")
 if not res["voisinage"].empty:
     st.markdown(f"### Comparaison au voisinage ({res['annee_ref']})")
     st.dataframe(res["voisinage"].drop(columns=["Parcelle"]), hide_index=True, width="stretch")
@@ -171,4 +242,4 @@ with e2:
 with e3:
     st.download_button("Séries complètes (CSV)", S.to_csv(index=False, sep=";").encode("utf-8-sig"), "satellite_series.csv", "text/csv",
                        icon=":material/download:", help="État de référence avant projet : toutes les valeurs, date par date.")
-sources("s2", "asi")
+sources("s2", "asi", "usgs_ndvi", "timesat")

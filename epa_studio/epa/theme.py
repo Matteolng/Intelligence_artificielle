@@ -160,6 +160,9 @@ a {{ color: var(--accent); }}
 .epa-indice .ref {{ font-size: .72rem; color: rgba(244,236,223,.62); margin-top: .5rem; }}
 .epa-gamme {{ height: 8px; border-radius: 4px; margin: .7rem 0 .2rem; transform-origin: left; animation: epaGrow 1.4s cubic-bezier(.2,.7,.2,1) both .3s; }}
 .epa-gamme-l {{ display:flex; justify-content:space-between; font-size:.7rem; color: rgba(244,236,223,.7); }}
+@keyframes epaWipe {{ from {{clip-path: inset(0 100% 0 0)}} to {{clip-path: inset(0 0 0 0)}} }}
+.epa-cal .bande {{ animation: epaWipe 2.4s cubic-bezier(.3,.6,.2,1) both; }}
+.epa-cal .jalon {{ opacity:0; animation: epaPop .5s ease-out forwards; }}
 @media (max-width: 900px) {{ .epa-indices {{ grid-template-columns: minmax(0,1fr); }} }}
 @media (max-width: 900px) {{ .epa-rings {{ grid-template-columns: minmax(0,1fr); }} .epa-frise {{ grid-template-columns: minmax(0,1fr) minmax(0,1fr); }}
   .epa-hero h1, .epa-hero.grand h1 {{ font-size: 3rem !important; }} .epa-bar {{ grid-template-columns: 120px minmax(0,1fr) 64px; }} }}
@@ -299,7 +302,8 @@ def carte_indice(ind) -> str:
 
 
 def courbes(series: dict, couleurs: list[str], vmin: float, vmax: float, reference: list | None = None,
-            ref_label: str = "", largeur: int = 980, hauteur: int = 280) -> str:
+            ref_label: str = "", largeur: int = 980, hauteur: int = 280, bandes: list | None = None,
+            fourchette: list | None = None) -> str:
     """Courbes SVG qui se tracent à l'affichage ; survol d'un point : date et valeur. series : {nom: [(date, valeur)]}."""
     import pandas as pd
 
@@ -316,6 +320,15 @@ def courbes(series: dict, couleurs: list[str], vmin: float, vmax: float, referen
         v = vmin + (vmax - vmin) * k / 4
         out.append(f'<line x1="{g}" x2="{largeur - dr}" y1="{Y(v):.1f}" y2="{Y(v):.1f}" stroke="rgba(31,42,34,.08)"/>'
                    f'<text x="{g - 6}" y="{Y(v) + 4:.1f}" text-anchor="end" font-size="10" fill="#4F5649">{v:.1f}</text>')
+    for b0, b1, lab, coul in bandes or []:  # repères de lecture en fond
+        y0, y1 = Y(min(b1, vmax)), Y(max(b0, vmin))
+        out.append(f'<rect x="{g}" y="{y0:.1f}" width="{largeur - g - dr}" height="{y1 - y0:.1f}" fill="{coul}"><title>{html.escape(lab)}</title></rect>'
+                   f'<text x="{largeur - dr - 6}" y="{y0 + 12:.1f}" text-anchor="end" font-size="9.5" fill="#4F5649" font-style="italic">{html.escape(lab)}</text>')
+    if fourchette:  # bande 25e-75e centile des voisines
+        haut = " ".join(f"{X(d):.1f},{Y(h):.1f}" for d, b, h in fourchette)
+        bas = " ".join(f"{X(d):.1f},{Y(b):.1f}" for d, b, h in reversed(fourchette))
+        out.append(f'<polygon class="fourch" points="{haut} {bas}" fill="rgba(140,145,128,.22)" stroke="none"><title>Fourchette des parcelles voisines '
+                   f'(25e à 75e centile)</title></polygon>')
     if vmin < 0 < vmax:
         out.append(f'<line x1="{g}" x2="{largeur - dr}" y1="{Y(0):.1f}" y2="{Y(0):.1f}" stroke="rgba(31,42,34,.35)"/>')
     m = pd.date_range(d0.normalize(), d1, freq="MS")  # premiers jours de mois à l'intérieur de la période
@@ -337,7 +350,62 @@ def courbes(series: dict, couleurs: list[str], vmin: float, vmax: float, referen
     leg = "".join(f'<span><i style="background:{couleurs[i % len(couleurs)]}"></i>{html.escape(n)}</span>' for i, n in enumerate(series))
     if reference:
         leg += f'<span><i style="background:repeating-linear-gradient(90deg,#8C9180 0 4px,transparent 4px 8px)"></i>{html.escape(ref_label)}</span>'
+    if fourchette:
+        leg += '<span><i style="background:rgba(140,145,128,.45);height:10px"></i>fourchette des voisines (moitié centrale)</span>'
     return "".join(out) + f'<div class="epa-legende">{leg}</div>'
 
 
 MOIS_COURT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+
+
+def _couleur_ndvi(v: float) -> str:
+    """Rampe NDVI de l'application (beige → vert foncé), interpolée."""
+    stops = [(-0.2, (138, 122, 92)), (0.1, (244, 236, 223)), (0.35, (220, 229, 188)), (0.6, (157, 176, 106)), (0.8, (86, 101, 62)), (1.0, (31, 58, 26))]
+    v = max(-0.2, min(1.0, v))
+    for (a, ca), (b, cb) in zip(stops, stops[1:]):
+        if v <= b:
+            k = (v - a) / (b - a)
+            return "#%02X%02X%02X" % tuple(int(ca[i] + k * (cb[i] - ca[i])) for i in range(3))
+    return "#1F3A1A"
+
+
+def calendrier(lignes: list[dict], d0, d1, largeur: int = 980) -> str:
+    """Calendrier cultural observé : une bande colorée par le NDVI pour chaque parcelle, jalons début / pic / fin de saison.
+
+    lignes : [{nom, points: [(date, ndvi)], jalons: [(date, libellé)]}].
+    """
+    import pandas as pd
+
+    d0, d1 = pd.Timestamp(d0), pd.Timestamp(d1)
+    span = max((d1 - d0).days, 1)
+    g, dr, hl, esp = 260, 10, 22, 12
+    X = lambda d: g + (pd.Timestamp(d) - d0).days / span * (largeur - g - dr)  # noqa: E731
+    h = 30 + len(lignes) * (hl + esp)
+    out = [f'<svg class="epa-cal" viewBox="0 0 {largeur} {h}" width="100%" role="img" aria-label="Calendrier cultural observé par parcelle">']
+    for d in pd.date_range(d0.normalize(), d1, freq="MS"):
+        out.append(f'<line x1="{X(d):.1f}" x2="{X(d):.1f}" y1="18" y2="{h}" stroke="rgba(31,42,34,.08)"/>')
+        if d.month in (1, 4, 7, 10):
+            out.append(f'<text x="{X(d) + 3:.1f}" y="13" font-size="10" fill="#4F5649">{MOIS_COURT[d.month - 1]} {str(d.year)[2:]}</text>')
+    for i, L in enumerate(lignes):
+        y = 22 + i * (hl + esp)
+        nom = L["nom"] if len(L["nom"]) <= 44 else L["nom"][:43] + "…"
+        out.append(f'<text x="{g - 10}" y="{y + hl / 2 + 4:.1f}" text-anchor="end" font-size="11.5" fill="#1F2A22">{html.escape(nom)}'
+                   f'<title>{html.escape(L["nom"])}</title></text>')
+        pts = sorted(L["points"])
+        rects = []
+        for j, (d, v) in enumerate(pts):
+            xa = X(d) if j == 0 else (X(pts[j - 1][0]) + X(d)) / 2
+            xb = X(d) if j == len(pts) - 1 else (X(d) + X(pts[j + 1][0])) / 2
+            rects.append(f'<rect x="{xa:.1f}" y="{y}" width="{max(xb - xa, 0.8):.1f}" height="{hl}" fill="{_couleur_ndvi(v)}">'
+                         f'<title>{pd.Timestamp(d).strftime("%d/%m/%Y")} : NDVI {v:.2f}</title></rect>')
+        out.append(f'<g class="bande" style="animation-delay:{i * .15:.2f}s">{"".join(rects)}</g>')
+        for k, (d, lab) in enumerate(L.get("jalons", [])):
+            if d is None:
+                continue
+            x = X(d)
+            out.append(f'<g class="jalon" style="animation-delay:{2.2 + i * .15 + k * .1:.2f}s"><path d="M{x:.1f},{y - 3} L{x - 4:.1f},{y - 9} '
+                       f'L{x + 4:.1f},{y - 9} Z" fill="#1F2A22"/><title>{html.escape(lab)} : {pd.Timestamp(d).strftime("%d/%m/%Y")}</title></g>')
+    out.append("</svg>")
+    leg = ('<div class="epa-legende"><span><i style="background:linear-gradient(90deg,#F4ECDF,#DCE5BC,#9DB06A,#56653E,#1F3A1A);width:80px;height:8px">'
+           '</i>NDVI : sol nu → végétation dense</span><span>▾ début, pic et fin de saison</span></div>')
+    return "".join(out) + leg
