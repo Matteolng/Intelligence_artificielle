@@ -36,6 +36,9 @@ CATALOGUE: dict[str, Source] = {
                       "https://data.geopf.fr/wms-r/wms (LANDCOVER.CLC18_FR)"),
     "sols": Source("INRAE – Gis Sol", "Les sols dominants de France métropolitaine – carte harmonisée (RRP 1/250 000)", "consultation",
                    "https://data.geopf.fr/wms-r/wms (INRAE_CARTE-SOLS)"),
+    "ru_bdgsf": Source("INRAE – Gis Sol", "Carte de la réserve utile en eau issue de la Base de données géographique des sols "
+                       "de France (1/1 000 000), doi:10.15454/JPB9RB", "consultation",
+                       "https://geodata.inrae.fr/geoserver/ows (inra_bdgsf:bdgsf_classe_ru)"),
     "ortho": Source("IGN", "Photographies aériennes (ORTHOIMAGERY.ORTHOPHOTOS), date de prise de vue variable selon le département",
                     "consultation", "https://data.geopf.fr/wmts"),
     "plan_ign": Source("IGN", "Plan IGN v2", "consultation", "https://data.geopf.fr/wmts"),

@@ -83,12 +83,12 @@ def _nord(ax) -> None:
                 fontsize=7, fontweight="bold", color=TEXTE, arrowprops={"arrowstyle": "-|>", "color": TEXTE, "lw": 1})
 
 
-def _fond(ax, bbox, couche: str, alpha: float = 1.0) -> bool:
+def _fond(ax, bbox, couche: str, alpha: float = 1.0, url: str = GPF_WMS_RASTER) -> bool:
     minx, miny, maxx, maxy = bbox
     w = 1800
     h = min(2600, max(200, int(w * (maxy - miny) / (maxx - minx))))
     try:
-        img = Image.open(io.BytesIO(cartes._wms_image(couche, bbox, w, h, GPF_WMS_RASTER)))
+        img = Image.open(io.BytesIO(cartes._wms_image(couche, bbox, w, h, url)))
     except Exception:
         return False
     ax.imshow(img, extent=(minx, maxx, miny, maxy), zorder=0, alpha=alpha)
@@ -242,9 +242,15 @@ def carte_otex(communes: gpd.GeoDataFrame, df_otex: pd.DataFrame | None, col_cod
                    "OTEX dominante par commune du périmètre d'étude")
 
 
+GISSOL_WMS = "https://geodata.inrae.fr/geoserver/ows"  # infrastructure de données du Gis Sol (INRAE)
+
+
 @disk_cache("wms")
-def legende_wms(couche: str) -> bytes | None:
-    """Image de légende publiée dans les GetCapabilities de la Géoplateforme (LegendURL)."""
+def legende_wms(couche: str, url: str = GPF_WMS_RASTER) -> bytes | None:
+    """Image de légende publiée par le service (LegendURL des GetCapabilities, ou GetLegendGraphic)."""
+    if url != GPF_WMS_RASTER:
+        return get_bytes(f"{url}?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer={couche}"
+                         "&legend_options=dpi:300;fontAntiAliasing:true")
     caps = get(GPF_WMS_RASTER, params={"SERVICE": "WMS", "REQUEST": "GetCapabilities", "VERSION": "1.3.0"}, timeout=120).text
     i = caps.find(f"<Name>{couche}</Name>")
     if i < 0:
@@ -255,20 +261,20 @@ def legende_wms(couche: str) -> bytes | None:
 
 
 def carte_wms_perimetre(perimetre: gpd.GeoDataFrame, couche: str, titre: str, source: str, sous_titre: str = "",
-                        legende: bool = True) -> bytes | None:
+                        legende: bool = True, url: str = GPF_WMS_RASTER) -> bytes | None:
     """Couche WMS (ex. CORINE Land Cover, sols INRAE) découpée visuellement au périmètre, avec sa légende officielle."""
     p = perimetre.to_crs(M)
     bbox = _bbox(p, 0.05)
     leg = None
     if legende:
         try:
-            leg = legende_wms(couche)
+            leg = legende_wms(couche, url) if url != GPF_WMS_RASTER else legende_wms(couche)
         except (DataSourceError, Exception):
             leg = None
     fig = plt.figure(figsize=(11, 6.4))
     ax = fig.add_axes([0.01, 0.07, 0.66 if leg else 0.98, 0.82])
     _fond(ax, bbox, PLAN, alpha=0.35)
-    if not _fond(ax, bbox, couche, alpha=0.95):
+    if not _fond(ax, bbox, couche, alpha=0.95, url=url):
         plt.close(fig)
         return None
     outside = gpd.GeoSeries([gpd.GeoSeries.from_xy([bbox[0]], [bbox[1]]).buffer(1e7).iloc[0].difference(p.union_all())], crs=M)
@@ -280,7 +286,12 @@ def carte_wms_perimetre(perimetre: gpd.GeoDataFrame, couche: str, titre: str, so
     _nord(ax)
     if leg:
         img = Image.open(io.BytesIO(leg))
-        lax = fig.add_axes([0.69, 0.07, 0.3, 0.82])
+        if url != GPF_WMS_RASTER:  # légende servie à 300 dpi : affichée à sa taille réelle, en haut à gauche de la colonne
+            fw, fh = fig.get_size_inches()
+            w, h = img.width / DPI / fw, img.height / DPI / fh
+            lax = fig.add_axes([0.70, 0.89 - min(h, 0.82), min(w, 0.29), min(h, 0.82)])
+        else:
+            lax = fig.add_axes([0.69, 0.07, 0.3, 0.82])
         lax.imshow(img)
         lax.axis("off")
     return _export(fig, titre, source, sous_titre)

@@ -115,11 +115,16 @@ bloc("sols", "Sols dominants", "Carte harmonisée des sols dominants (Référent
      lambda: figures.carte_wms_perimetre(t.communes, "INRAE_CARTE-SOLS", "Sols dominants du périmètre d'étude",
                                          "INRAE – Gis Sol, sols dominants de France métropolitaine ; IGN, Géoplateforme",
                                          "Référentiels régionaux pédologiques au 1/250 000"), ("sols", "plan_ign"))
-st.markdown("#### Réserve utile et profondeur des sols")
-manquant("Réserve utile et profondeur des sols", "INRAE – Gis Sol",
-         "Non intégrées à ce stade. Le Gis Sol publie une « Carte de la réserve utile en eau issue de la Base de données "
-         "géographique des sols de France » (1/1 000 000, doi:10.15454/JPB9RB), diffusée par son infrastructure "
-         "geodata.inrae.fr : son intégration nécessite d'autoriser ce site dans l'environnement réseau.")
+bloc("ru", "Réserve utile en eau des sols", "Classes de réserve utile de la Base de données géographique des sols de "
+     "France (Gis Sol, échelle 1/1 000 000 : à lire comme un ordre de grandeur, pas à la parcelle).",
+     lambda: figures.carte_wms_perimetre(t.communes, "inra_bdgsf:bdgsf_classe_ru", "Réserve utile en eau des sols du périmètre",
+                                         "INRAE – Gis Sol, réserve utile en eau issue de la BDGSF (1/1 000 000) ; IGN, Géoplateforme",
+                                         "Base de données géographique des sols de France, échelle 1/1 000 000",
+                                         url=figures.GISSOL_WMS), ("ru_bdgsf", "plan_ign"))
+st.markdown("#### Profondeur des sols")
+manquant("Profondeur des sols", "INRAE – Gis Sol",
+         "Aucune couche de profondeur des sols n'est publiée par les services cartographiques du Gis Sol (geodata.inrae.fr, "
+         "vérifié dans ses GetCapabilities) ni par la Géoplateforme. Joignez vos propres données si besoin.")
 st.divider()
 
 # 5. OTEX
