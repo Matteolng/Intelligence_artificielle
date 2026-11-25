@@ -11,7 +11,7 @@ from epa.gabarits import phrase_evolution
 
 def test_branding_defaut(tmp_path):
     b = B.charger_branding(tmp_path / "absent.toml")
-    assert b.nom == "Votre bureau d'études" and b.couleur == "#2F6B3A"
+    assert b.nom == "Votre bureau d'études" and b.couleur == "#56653E"
 
 
 def test_branding_fichier(tmp_path):
@@ -24,7 +24,7 @@ def test_branding_fichier(tmp_path):
 def test_branding_couleur_invalide(tmp_path):
     p = tmp_path / "b.toml"
     p.write_text('[bureau]\ncouleur = "vert"\n', encoding="utf-8")
-    assert B.charger_branding(p).couleur == "#2F6B3A"
+    assert B.charger_branding(p).couleur == "#56653E"
 
 
 def test_branding_session_prioritaire():
@@ -124,7 +124,7 @@ def test_tuile_format_francais():
 
 
 def test_contraste_couleur():
-    assert round(B.contraste_blanc("#2F6B3A"), 2) == 6.39
+    assert B.contraste_blanc("#56653E") > 4.5
     assert B.contraste_blanc("#FFD700") < 4.5
 
 

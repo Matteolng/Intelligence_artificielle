@@ -3,6 +3,7 @@ headless = true
 port = 8501
 address = "0.0.0.0"
 maxUploadSize = 200
+enableStaticServing = true
 # Derrière le proxy d'Onyxia (SSP Cloud), ces protections empêchent parfois l'envoi de fichiers.
 # Elles sont désactivées pour un usage interne ; réactivez-les si l'application est exposée publiquement.
 enableCORS = false
@@ -15,20 +16,23 @@ toolbarMode = "minimal"
 gatherUsageStats = false
 
 [theme]
-# Couleur d'accent par défaut ; la couleur du bureau d'études (branding.toml / page Réglages) est injectée par CSS.
-primaryColor = "#2F6B3A"
-backgroundColor = "#F5F5F7"
+# Identité v2 (maquette validée) : olive, crème, vert nuit. La couleur du bureau d'études est injectée par CSS.
+primaryColor = "#56653E"
+backgroundColor = "#ECEEE4"
 secondaryBackgroundColor = "#FFFFFF"
-textColor = "#1D1D1F"
-linkColor = "#2F6B3A"
-borderColor = "#D2D2D7"
+textColor = "#1F2A22"
+linkColor = "#56653E"
+borderColor = "#C9CDBC"
 showWidgetBorder = true
-baseRadius = "10px"
+baseRadius = "12px"
 baseFontSize = 15
 font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap, sans-serif"
-headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap, sans-serif"
+headingFont = "'Cormorant Garamond':https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap, serif"
 chartCategoricalColors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
 
 [theme.sidebar]
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F5F5F7"
+backgroundColor = "#18211A"
+secondaryBackgroundColor = "#232E25"
+textColor = "#F4ECDF"
+primaryColor = "#DCE5BC"
+borderColor = "#3A463B"

@@ -15,78 +15,25 @@ GRIS = {"fond": "#F5F5F7", "surface": "#FFFFFF", "texte": "#1D1D1F", "second": "
         "muet": "#86868B"}
 
 
-def _css(accent: str) -> str:
-    return f"""
-<style>
-:root {{ --accent: {accent}; --texte: {GRIS['texte']}; --second: {GRIS['second']}; --filet: {GRIS['filet']};
-        --surface: {GRIS['surface']}; --fond: {GRIS['fond']}; --muet: {GRIS['muet']}; }}
-.block-container, [data-testid="stMainBlockContainer"] {{ padding-top: 2.4rem; padding-bottom: 4rem; max-width: 1240px; }}
-h1, h2, h3, h4 {{ color: var(--texte); letter-spacing: -0.015em; }}
-h1 {{ font-weight: 650 !important; }}
-h3, h4 {{ font-weight: 600 !important; }}
-[data-testid="stSidebar"] {{ border-right: 1px solid var(--filet); }}
-[data-testid="stSidebarNav"] a[aria-current="page"] span {{ color: var(--accent); font-weight: 600; }}
-[data-testid="stSidebarNavSeparator"] {{ display: none; }}
-a, .stPageLink a p {{ color: var(--accent); }}
-.stButton button[kind="primary"], .stDownloadButton button[kind="primary"], .stFormSubmitButton button[kind="primary"] {{
-  background: var(--accent); border-color: var(--accent); }}
-.stButton button[kind="primary"]:hover {{ filter: brightness(1.08); border-color: var(--accent); }}
-:focus-visible {{ outline: 2px solid var(--accent) !important; outline-offset: 2px; }}
-
-.epa-head {{ margin: 0 0 1.6rem 0; }}
-.epa-head .etape {{ color: var(--accent); font-size: .9rem; font-weight: 600; margin-bottom: .35rem; }}
-.epa-head h1 {{ font-size: 2.15rem; line-height: 1.15; margin: 0 0 .5rem 0; padding: 0; }}
-.epa-head p {{ color: var(--second); font-size: 1.05rem; line-height: 1.5; margin: 0; max-width: 68ch; }}
-
-.epa-tile {{ background: var(--surface); border-radius: 14px; padding: 1.1rem 1.2rem 1rem; height: 100%;
-            border: 1px solid #E8E8ED; }}
-.epa-tile .l {{ color: var(--second); font-size: .88rem; line-height: 1.3; }}
-.epa-tile .v {{ color: var(--texte); font-size: 2rem; font-weight: 600; line-height: 1.15; margin: .3rem 0 .15rem;
-               font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }}
-.epa-tile .s {{ color: var(--second); font-size: .82rem; }}
-.epa-tile .na {{ color: var(--second); font-size: 1.05rem; font-weight: 500; }}
-.epa-tile .cmp {{ border-top: 1px solid #E8E8ED; margin-top: .7rem; padding-top: .55rem; display: grid;
-                 grid-template-columns: 1fr auto; row-gap: .2rem; font-size: .84rem; color: var(--second);
-                 font-variant-numeric: tabular-nums; }}
-.epa-tile .cmp b {{ color: var(--texte); font-weight: 500; text-align: right; }}
-
-.epa-source {{ font-size: .78rem; color: var(--second); margin-top: .35rem; }}
-.epa-phrase {{ border-left: 3px solid var(--accent); padding: .15rem 0 .15rem .9rem; margin: .9rem 0 .4rem;
-              color: var(--texte); font-size: 1rem; line-height: 1.55; max-width: 78ch; }}
-.epa-phrase small {{ display: block; color: var(--second); font-size: .78rem; margin-top: .25rem; }}
-.epa-missing {{ background: var(--surface); border: 1px dashed #C7C7CC; border-radius: 12px; padding: .9rem 1rem;
-               color: var(--second); font-size: .9rem; }}
-.epa-missing b {{ color: var(--texte); font-weight: 600; }}
-.epa-card {{ background: var(--surface); border-radius: 14px; padding: 1.1rem 1.2rem; height: 100%; border: 1px solid #E8E8ED; }}
-.epa-card h4 {{ margin: 0 0 .35rem 0; font-size: 1rem; }}
-.epa-card p {{ margin: 0; color: var(--second); font-size: .9rem; line-height: 1.45; }}
-.epa-badge {{ display:inline-block; padding: 1px 8px; border-radius: 6px; font-size: .78rem; font-weight: 600; }}
-.epa-ok {{ background:#E8F3EA; color:#1E5A2B; }} .epa-warn {{ background:#FFF3DC; color:#7A4F00; }}
-.epa-ko {{ background:#FDE7E6; color:#9E2620; }}
-.epa-brand {{ font-weight: 650; font-size: 1.02rem; color: var(--texte); line-height: 1.25; }}
-.epa-brand span {{ display:block; color: var(--second); font-weight: 400; font-size: .8rem; margin-top: .15rem; }}
-.epa-home {{ margin: .6rem 0 1.8rem; max-width: 820px; }}
-.epa-home .etape {{ color: var(--accent); font-weight: 600; font-size: .95rem; margin-bottom: .6rem; }}
-.epa-home h1 {{ font-size: 2.9rem; line-height: 1.08; font-weight: 650; letter-spacing: -0.03em; margin: 0 0 1rem; padding: 0; }}
-.epa-home p {{ color: var(--second); font-size: 1.15rem; line-height: 1.55; margin: 0; max-width: 64ch; }}
-.epa-step {{ border-top: 2px solid var(--texte); padding-top: .7rem; }}
-.epa-step span {{ color: var(--accent); font-weight: 650; font-size: 1.4rem; display: block; line-height: 1; margin-bottom: .45rem;
-                 font-variant-numeric: tabular-nums; }}
-.epa-step b {{ display: block; font-size: 1rem; margin-bottom: .2rem; }}
-.epa-step p {{ color: var(--second); font-size: .9rem; margin: 0; line-height: 1.45; }}
-[data-testid="stMetricValue"] {{ font-weight: 600; }}
-</style>
-"""
-
-
 def setup_page() -> None:
-    st.markdown(_css(branding_courant().couleur), unsafe_allow_html=True)
+    from .theme import css
+
+    st.markdown(css(branding_courant().couleur), unsafe_allow_html=True)
 
 
-def entete(etape: str | None, titre: str, intro: str = "") -> None:
-    e = f'<div class="etape">{html.escape(etape)}</div>' if etape else ""
-    p = f"<p>{intro}</p>" if intro else ""
-    st.markdown(f'<div class="epa-head">{e}<h1>{html.escape(titre)}</h1>{p}</div>', unsafe_allow_html=True)
+def entete(etape: str | None, titre: str, intro: str = "", italique: str = "") -> None:
+    """En-tête sobre (pages denses et de conclusion)."""
+    from .theme import tete
+
+    st.markdown(tete(etape, titre, italique, intro), unsafe_allow_html=True)
+
+
+def entete_nuit(etape: str | None, titre: str, italique: str = "", intro: str = "", photo: str | None = None,
+                credit: str = "Photographie aérienne : IGN, Géoplateforme", grand: bool = False) -> None:
+    """En-tête « nuit » avec la photo aérienne du territoire (accueil, démonstration, chiffres clés)."""
+    from .theme import hero as _hero
+
+    st.markdown(_hero(etape, titre, italique, intro, photo, credit, grand), unsafe_allow_html=True)
 
 
 def hero(titre: str, sous_titre: str, etape: str | None = None) -> None:
@@ -233,7 +180,8 @@ def sidebar_status() -> None:
     with st.sidebar:
         if b.logo:
             st.logo(str(b.logo), size="large")
-        st.markdown(f'<div class="epa-brand">{html.escape(b.nom)}<span>{APP_NAME}</span></div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-family:var(--serif);font-size:1.5rem;line-height:1.1">{html.escape(b.nom)}</div>'
+                    f'<div style="font-size:.8rem;opacity:.75">{APP_NAME}</div>', unsafe_allow_html=True)
         st.write("")
         if t is not None:
             demo = " (démonstration)" if st.session_state.get("mode_demo") else ""
@@ -244,7 +192,8 @@ def sidebar_status() -> None:
         if e is not None and not e.empty:
             from .projet import surface_ha
 
-            st.caption(f"Emprise du projet : {surface_ha(e):.1f} ha".replace(".", ","))
+            fict = " (fictive)" if st.session_state.get("emprise_fictive") else ""
+            st.caption(f"Emprise du projet : {surface_ha(e):.1f} ha".replace(".", ",") + fict)
         modules = {"RPG": "rpg", "RA 2020": "ra2020", "Filières": "filieres", "SIQO": "siqo", "Bio": "bio",
                    "Foncier": "dvf", "Compensation": "compensation"}
         if t is not None:

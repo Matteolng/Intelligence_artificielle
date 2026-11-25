@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 DEFAUT_NOM = "Votre bureau d'études"
-DEFAUT_COULEUR = "#2F6B3A"
+DEFAUT_COULEUR = "#56653E"
 FICHIER = Path(__file__).resolve().parents[1] / "branding.toml"
 _HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
 

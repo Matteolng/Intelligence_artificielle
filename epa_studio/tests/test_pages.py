@@ -74,7 +74,7 @@ def test_parcours_complet(state):
     (ROOT / "tests" / "_rapport_test.docx").write_bytes(res(at, "docx"))
     goto(at, "app_pages/p12_referentiel.py")
     goto(at, "app_pages/p04b_chiffres_cles.py")
-    assert res(at, "chiffres_cles")["comp"].shape[0] == 3
+    assert res(at, "chiffres_cles")["comp"].shape[0] == 4
     goto(at, "app_pages/p13_figures.py")
     goto(at, "app_pages/p14_reglages.py")
     goto(at, "app_pages/p00_accueil.py")

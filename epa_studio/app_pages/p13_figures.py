@@ -150,7 +150,10 @@ cc = resultat("chiffres_cles")
 st.markdown("#### Évolution 2010-2020 comparée")
 if cc:
     nom_dep = T.list_departements().set_index("code")["nom"].get(cc["dep"], cc["dep"])
-    png = figures.evolutions_comparees(cc["comp"].assign(Territoire=["Périmètre d'étude", nom_dep, "France"]))
+    noms_cc = ["Périmètre d'étude", nom_dep] + (["Région"] if len(cc["comp"]) == 4 else []) + ["France"]
+    if len(cc["comp"]) == 4:
+        noms_cc[2] = T.list_regions().set_index("code")["nom"].get(cc.get("reg"), "Région")
+    png = figures.evolutions_comparees(cc["comp"].assign(Territoire=noms_cc))
     st.image(png, width="stretch")
     bouton_png(png, "evolutions_2010_2020")
     sources("ra2020")
