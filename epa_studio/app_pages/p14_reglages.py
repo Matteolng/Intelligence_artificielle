@@ -5,7 +5,7 @@ from epa.branding import (DEFAUT_COULEUR, POLICES_TEXTE, POLICES_TITRES, brandin
 from epa.http import cache_size_mb, clear_cache
 from epa.ui import entete
 
-entete(None, "Réglages", "à vos couleurs", "Identité du bureau d'études : interface, figures exportées, rapport Word et diapositives.")
+entete(None, "Réglages", italique="à vos couleurs", intro="Identité du bureau d'études : interface, figures exportées, rapport Word et diapositives.")
 b = branding_courant()
 with st.form("branding"):
     c1, c2 = st.columns(2)

@@ -3,8 +3,8 @@ import streamlit as st
 from epa import bibliotheque as BIB
 from epa.ui import entete
 
-entete(None, "Bibliothèque", "partagée",
-       "Les projets enregistrés et les analyses déjà calculées sur cette instance. Une analyse d'intercommunalité "
+entete(None, "Bibliothèque", italique="partagée",
+       intro="Les projets enregistrés et les analyses déjà calculées sur cette instance. Une analyse d'intercommunalité "
        "faite pour un projet est réutilisée par tous les projets suivants du même secteur.")
 
 st.markdown("### Projets")
