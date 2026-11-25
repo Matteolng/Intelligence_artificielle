@@ -174,10 +174,10 @@ def photo_territoire(communes, largeur: int = 1800) -> str | None:
     if not f.exists():
         try:
             img = Image.open(io.BytesIO(_wms_image(ORTHO, bbox, largeur, int(largeur / 2.2)))).convert("RGB")
-        except Exception:  # le service peut être indisponible : en-tête sans photo
+            GEN.mkdir(parents=True, exist_ok=True)
+            img.save(f, quality=74, optimize=True, progressive=True)
+        except Exception:  # service indisponible ou dossier non inscriptible : en-tête sans photo
             return None
-        GEN.mkdir(parents=True, exist_ok=True)
-        img.save(f, quality=74, optimize=True, progressive=True)
     return f"{URL}/gen/{f.name}"
 
 

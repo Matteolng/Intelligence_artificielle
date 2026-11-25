@@ -221,7 +221,11 @@ if st.button("Préparer les diapositives (PowerPoint)", icon=":material/slidesho
         rows = [cc["comp"].iloc[i].to_dict() for i in range(len(cc["comp"]))]
         labels = ["Périmètre", "Département", "Région", "France"][:len(rows)] if len(rows) == 4 else ["Périmètre", "Département", "France"]
         for lab, row in zip(labels, rows):
-            ech.append({"label": lab, "nom": row["Territoire"] if lab != "Périmètre" else t.nom,
+            _codes = {"Département": (T.list_departements().set_index("code")["nom"], cc.get("dep")),
+                      "Région": (T.list_regions().set_index("code")["nom"], cc.get("reg"))}
+            _nom = t.nom if lab == "Périmètre" else ("Somme des départements" if lab == "France" else
+                                                     _codes[lab][0].get(_codes[lab][1], row["Territoire"]))
+            ech.append({"label": lab, "nom": _nom,
                         "exp": fmt_val(row.get("Exploitations 2020"), "", 0),
                         "evol_exp": fmt_val(row.get("Évolution exploitations 2010-2020 (%)"), "%", 1, signe=True),
                         "sau": fmt_val(row.get("SAU 2020 (ha)"), "ha", 0),

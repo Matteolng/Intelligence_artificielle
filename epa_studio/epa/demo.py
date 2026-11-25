@@ -50,6 +50,9 @@ def charger_demo(state: MutableMapping, lat: float, lon: float, avec_emprise: bo
     """Construit le territoire de démonstration autour du point et le place dans l'état de session."""
     p = perimetre_depuis_point(lat, lon)
     c = p["commune"]
+    # nouveau territoire : on oublie le projet précédent (emprise, identifiant de projet partagé, lien)
+    for k in ("emprise", "emprise_fictive", "communes_emprise", "projet_id", "lien_projet", "projet"):
+        state.pop(k, None)
     if p["epci"]:
         t = T.build_territoire([p["epci"]], nom=p["nom"])
     else:

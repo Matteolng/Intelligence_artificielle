@@ -49,6 +49,8 @@ with st.expander("Proposer le périmètre à partir de l'emprise du projet", exp
                     st.error(str(e))
                     st.stop()
             st.session_state["territoire"] = t_new
+            for _k in ("projet_id", "lien_projet"):
+                st.session_state.pop(_k, None)
             st.session_state["communes_emprise"] = prop["communes_emprise"]
             st.session_state["territoire_cfg"] = cfg = {
                 "region": t_new.code_region, "tous_deps": len(t_new.codes_departements) > 1, "departements": t_new.codes_departements,
@@ -122,6 +124,8 @@ if st.button("Valider le territoire d'étude", type="primary", disabled=not (sel
             st.error(str(e))
             st.stop()
     st.session_state["territoire"] = t
+    for _k in ("projet_id", "lien_projet"):  # un nouveau territoire ne doit pas écraser un projet partagé ouvert avant
+        st.session_state.pop(_k, None)
     st.session_state["territoire_cfg"] = {
         "region": reg, "tous_deps": tous, "departements": sel_deps, "epcis": sel_epcis,
         "communes_ajoutees": cfg.get("communes_ajoutees", []), "communes_retirees": retirees, "nom": nom,
@@ -183,6 +187,7 @@ try:
     otx = otex_communes()
 except DataSourceError:
     otx = None
+st.caption("Le paragraphe ci-dessous décrit le périmètre validé ; les communes ajoutées y figurent après validation.")
 phrase(PER.texte_justification(t.communes[t.communes["code"].isin(codes_live)], t.epcis,
                                st.session_state.get("communes_emprise", []),
                                ajoutees=cfg.get("communes_ajoutees"), retirees=retirees, otex=otx))

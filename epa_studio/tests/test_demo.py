@@ -54,3 +54,13 @@ def test_emprise_fictive_surface():
     from epa.projet import surface_ha
     e = D.emprise_fictive(45.9, 3.27, 20)
     assert abs(surface_ha(e) - 20) < 0.01 and e["nom"].iloc[0] == D.EMPRISE_FICTIVE
+
+
+def test_demo_oublie_le_projet_precedent(monkeypatch):
+    import geopandas as gpd
+    monkeypatch.setattr(D, "commune_au_point", lambda lat, lon: {"nom": "A", "code": "63001", "codeEpci": None,
+                                                                   "codeDepartement": "63", "codeRegion": "84"})
+    monkeypatch.setattr(D.T, "build_territoire", lambda *a, **k: type("T", (), {"code_region": "84", "codes_departements": ["63"]})())
+    state = {"emprise": gpd.GeoDataFrame(geometry=[]), "projet_id": "abcdefabcdef", "communes_emprise": ["1"]}
+    D.charger_demo(state, 45.9, 3.27, avec_emprise=False)
+    assert "emprise" not in state and "projet_id" not in state and "communes_emprise" not in state

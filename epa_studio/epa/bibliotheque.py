@@ -138,7 +138,9 @@ def restaurer(data: dict, state: MutableMapping) -> None:
         if k in data:
             state[k] = data[k]
     if data.get("comp_params"):
-        state["comp_params"] = Parametres(**data["comp_params"])
+        cp = dict(data["comp_params"])
+        cp.setdefault("regime_2026", False)  # projet enregistré avant la loi n° 2026-796 : régime d'origine conservé
+        state["comp_params"] = Parametres(**cp)
     if data.get("pb_table"):
         state["pb_table"] = pd.DataFrame(data["pb_table"])
     if data.get("effets"):
