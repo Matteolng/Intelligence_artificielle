@@ -101,7 +101,9 @@ def _export(fig, titre: str, source: str, sous_titre: str = "") -> bytes:
     if sous_titre:
         fig.text(0.012, 1 - 0.36 / h, sous_titre, fontsize=8, color=SECOND, va="top", ha="left")
     b = branding_courant()
-    fig.text(0.012, 0.012, f"Source : {source}", fontsize=6.5, color=SECOND, ha="left", va="bottom")
+    from datetime import date as _d
+    fig.text(0.012, 0.012, f"Source : {source}. Données consultées le {_d.today().strftime('%d/%m/%Y')}.",
+             fontsize=6.5, color=SECOND, ha="left", va="bottom")
     fig.text(0.988, 0.012, b.nom, fontsize=6.5, color=SECOND, ha="right", va="bottom")
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=DPI, facecolor="white")
