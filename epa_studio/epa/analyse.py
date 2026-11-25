@@ -152,6 +152,8 @@ def texte_compensation(res: dict) -> str:
         f"{fnum(p['duree_reconstitution_ans'])} ans et avec un ratio d'investissement de {fnum(p['ratio_investissement'], 2)}, "
         f"le montant de compensation collective s'élève à {fnum(res['montant_compensation_eur'])} €."
     )
+    if res.get("regime"):
+        phr += f" Assiette retenue : {res['regime']}."
     if not p.get("parametres_valides"):
         phr += " ATTENTION : les paramètres n'ont pas été validés au regard de la doctrine départementale."
     return phr

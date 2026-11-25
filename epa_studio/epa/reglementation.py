@@ -128,6 +128,23 @@ REFERENTIEL: list[Item] = [
          ("Chambres d'agriculture – Outils et méthodes pour l'émergence de projets de compensation",
           "https://opera-connaissances.chambres-agriculture.fr/doc_num.php?explnum_id=196953")],
     ),
+    Item(
+        "Compensation collective",
+        "Agrivoltaïsme : surfaces soumises à compensation (art. L. 112-1-3 IV, loi du 18 août 2026)",
+        "Depuis le 20 août 2026, l'article L. 112-1-3 du code rural, modifié par l'article 30 de la loi n° 2026-796 du 18 août 2026 "
+        "d'urgence pour la protection et la souveraineté agricoles, soumet expressément les installations agrivoltaïques à l'étude "
+        "préalable (I). Son IV dispose que, pour ces installations, « les mesures de compensation collective [...] ne s'appliquent "
+        "qu'à raison des surfaces soustraites à toute activité agricole de manière définitive ou réversible » et que « ne sont pas "
+        "soumises à la compensation collective les surfaces situées sous les dispositifs de production d'énergie solaire sur "
+        "lesquelles l'activité agricole se poursuit dans les conditions prévues à l'article L. 314-36 du code de l'énergie ». "
+        "Le II prévoit, en cas de manquement, mise en demeure, consignation, exécution d'office, amende administrative jusqu'à "
+        "30 000 € et astreinte journalière jusqu'à 1 500 €.",
+        OFFICIEL,
+        [("Code rural, art. L. 112-1-3 (version en vigueur depuis le 20/08/2026) – Légifrance",
+          "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000054715854"),
+         ("Loi n° 2026-796 du 18 août 2026 – Légifrance", "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054707007"),
+         ("Kohen Avocats – analyse (26/08/2026)", "https://kohenavocats.fr/2026/08/26/agrivoltaisme-compensation-agricole-collective-loi-18-aout-2026/")],
+    ),
     # ------------------------------------------------------------------ Agrivoltaïsme
     Item(
         "Agrivoltaïsme",

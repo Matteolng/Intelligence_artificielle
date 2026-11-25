@@ -22,9 +22,10 @@ def test_compensation_artificialisation():
 
 
 def test_compensation_agrivoltaique():
-    # 1 ha soustrait sur 10 (10 %), 10 % de baisse sur le reste
+    # 1 ha soustrait sur 10 (10 %), 10 % de baisse sur le reste.
+    # Méthode applicable quand la poursuite agricole sous panneaux (art. L. 314-36 c. énergie) n'est pas démontrée.
     p = C.Parametres(type_projet="Agrivoltaïque", surface_infrastructures_ha=1.0, taux_perte_zone_agri_pct=10.0,
-                     duree_reconstitution_ans=1, ratio_investissement=1.0)
+                     duree_reconstitution_ans=1, ratio_investissement=1.0, poursuite_agricole_l314_36=False)
     r = C.calcul(table(), p)
     attendu = (0.8 * 1000 + 7.2 * 1000 * 0.1) + (0.2 * 2000 + 1.8 * 2000 * 0.1)
     assert r["perte_primaire_eur_an"] == pytest.approx(attendu)
@@ -32,7 +33,8 @@ def test_compensation_agrivoltaique():
 
 
 def test_compensation_changement_production():
-    p = C.Parametres(type_projet="Agrivoltaïque", pb_apres_projet_eur_ha=500.0, duree_reconstitution_ans=1)
+    p = C.Parametres(type_projet="Agrivoltaïque", pb_apres_projet_eur_ha=500.0, duree_reconstitution_ans=1,
+                     poursuite_agricole_l314_36=False)
     r = C.calcul(table(), p)
     assert r["perte_primaire_eur_an"] == pytest.approx(8 * 500 + 2 * 1500)
 
@@ -73,3 +75,16 @@ def test_codes_naf_existants():
 def test_zoom():
     assert zoom_pour_emprise((2.39, 44.27, 2.66, 44.45)) in range(9, 13)
     assert zoom_pour_emprise((2.5085, 44.3365, 2.5165, 44.3415)) >= 15
+
+
+def test_compensation_loi_2026():
+    import pandas as pd
+    from epa.compensation import Parametres, calcul
+    t = pd.DataFrame({"groupe": ["Blé"], "surface_ha": [20.0], "pb_eur_ha": [1000.0]})
+    # activité agricole maintenue sous panneaux : seules les surfaces soustraites (2 ha définitifs + 1 ha réversible) comptent
+    r = calcul(t, Parametres(surface_infrastructures_ha=2.0, surface_reversible_ha=1.0, taux_perte_zone_agri_pct=10))
+    assert r["perte_primaire_eur_an"] == 3000.0 and "L. 112-1-3 IV" in r["regime"]
+    # poursuite non démontrée : retour à la perte sur la zone agrivoltaïque (17 ha × 10 %)
+    r2 = calcul(t, Parametres(surface_infrastructures_ha=2.0, surface_reversible_ha=1.0, taux_perte_zone_agri_pct=10,
+                              poursuite_agricole_l314_36=False))
+    assert round(r2["perte_primaire_eur_an"], 6) == 3000.0 + 17 * 100.0

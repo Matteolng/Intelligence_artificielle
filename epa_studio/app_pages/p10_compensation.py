@@ -21,6 +21,11 @@ base = ge.groupby("groupe", as_index=False)["surface_ha"].sum().sort_values("sur
 with st.expander("Méthode de calcul", expanded=False):
     st.markdown(
         """
+**Régime en vigueur depuis le 20 août 2026** – article L. 112-1-3, IV, du code rural (loi n° 2026-796 du 18 août 2026,
+art. 30) : pour une installation agrivoltaïque, la compensation collective ne s'applique qu'aux surfaces soustraites à
+toute activité agricole, de manière définitive ou réversible. Les surfaces sous les panneaux où l'activité agricole se
+poursuit dans les conditions de l'article L. 314-36 du code de l'énergie n'y sont pas soumises.
+
 **Perte annuelle primaire** = Σ (surface affectée effective × produit brut par ha)
 – surfaces soustraites (pistes, postes, locaux…) : 100 % du produit brut ;
 – zone agrivoltaïque : taux de baisse de production attendu, ou écart de produit brut en cas de changement de production.
@@ -61,31 +66,59 @@ st.markdown("##### 2. Paramètres")
 p0: C.Parametres = st.session_state.get("comp_params") or C.Parametres(
     type_projet="Agrivoltaïque" if (pj is None or pj.type_projet == "Agrivoltaïque") else "Artificialisation",
     surface_infrastructures_ha=float(getattr(pj, "surface_infrastructures_ha", 0.0) or 0.0))
+from epa.chiffres_cles import departement_reference  # noqa: E402
+from epa.projet import site_courant  # noqa: E402
+
+_t = st.session_state["territoire"]
+_dep = departement_reference(_t.communes, site_courant(st.session_state, _t.communes))
+pre = C.PRESETS.get(_dep)
+if pre:
+    st.info(f"Préréglage disponible pour ce département : **{pre['libelle']}** ("
+            + ", ".join(f"{k.replace('_', ' ')} = {v}" for k, v in pre["valeurs"].items())
+            + f"). [Source]({pre['source']}). Les autres paramètres restent à renseigner selon la doctrine locale.",
+            icon=":material/tune:")
+    if st.button("Appliquer le préréglage"):
+        p0 = C.Parametres(**{**p0.to_dict(), **pre["valeurs"]})
+        st.session_state["comp_params"] = p0
+        for k in ("ratio", "duree"):
+            st.session_state.pop(k, None)
+        st.rerun()
+else:
+    st.caption(f"Aucun préréglage documenté pour le département {_dep} : renseignez les paramètres de la doctrine départementale "
+               "(DDT, chambre d'agriculture).")
 c1, c2, c3 = st.columns(3)
 with c1:
     typ = st.radio("Nature de l'impact", ["Agrivoltaïque", "Artificialisation"], index=0 if p0.type_projet == "Agrivoltaïque" else 1,
                    help="Agrivoltaïque : production maintenue avec une baisse ; artificialisation : perte totale sur l'emprise.")
-    infra = st.number_input("Surfaces soustraites à la production (ha)", min_value=0.0, value=float(p0.surface_infrastructures_ha), step=0.1, disabled=typ != "Agrivoltaïque")
+    infra = st.number_input("Surfaces soustraites définitivement (ha)", min_value=0.0, value=float(p0.surface_infrastructures_ha), step=0.1,
+                            disabled=typ != "Agrivoltaïque", help="Pistes, postes, locaux, clôtures, raccordement.")
+    rev = st.number_input("Surfaces soustraites de manière réversible (ha)", min_value=0.0, value=float(getattr(p0, "surface_reversible_ha", 0.0)),
+                          step=0.1, disabled=typ != "Agrivoltaïque", help="Plateformes de chantier, stockage : soustraction réversible, compensée (art. L. 112-1-3 IV).")
+    poursuite = st.checkbox("L'activité agricole se poursuit sous les panneaux (art. L. 314-36 c. énergie)",
+                            value=getattr(p0, "poursuite_agricole_l314_36", True), disabled=typ != "Agrivoltaïque",
+                            help="Si oui, ces surfaces ne sont pas soumises à compensation. À justifier : rendement, revenu durable, activité principale.")
 with c2:
-    chg = st.checkbox("Changement de production sur la zone agrivoltaïque", value=p0.pb_apres_projet_eur_ha is not None, disabled=typ != "Agrivoltaïque")
+    chg = st.checkbox("Changement de production sur la zone agrivoltaïque", value=p0.pb_apres_projet_eur_ha is not None, disabled=typ != "Agrivoltaïque" or poursuite)
     taux = st.number_input("Baisse de production attendue (%)", min_value=0.0, max_value=100.0, value=float(p0.taux_perte_zone_agri_pct), step=1.0,
-                           disabled=(typ != "Agrivoltaïque" or chg),
+                           disabled=(typ != "Agrivoltaïque" or chg or poursuite),
                            help="10 % correspond au plafond implicite du critère de rendement (≥ 90 % de la zone témoin) : scénario majorant.")
     pb_apres = st.number_input("Produit brut après projet (€/ha)", min_value=0.0, value=float(p0.pb_apres_projet_eur_ha or 0.0), step=10.0,
-                               disabled=(typ != "Agrivoltaïque" or not chg))
+                               disabled=(typ != "Agrivoltaïque" or not chg or poursuite))
 with c3:
     coef = st.number_input("Coefficient filières aval", min_value=0.0, value=float(p0.coefficient_aval), step=0.05, format="%.2f",
                            help="Valeur ajoutée générée par l'aval pour 1 € de production primaire (doctrine départementale).")
     duree = st.number_input("Durée de reconstitution (ans)", min_value=1.0, max_value=30.0, value=float(p0.duree_reconstitution_ans), step=1.0)
-    preset = st.selectbox("Ratio d'investissement", ["Personnalisé", "5,6 – guide DDT Haute-Saône (2020)", "6,69 – Chambre d'agriculture 13 (PACA)"])
-    ratio_def = {"5,6 – guide DDT Haute-Saône (2020)": 5.6, "6,69 – Chambre d'agriculture 13 (PACA)": 6.69}.get(preset, float(p0.ratio_investissement))
-    ratio = st.number_input("Valeur du ratio", min_value=0.1, value=ratio_def, step=0.1, disabled=preset != "Personnalisé")
+    ratio = st.number_input("Ratio d'investissement", min_value=0.1, value=float(p0.ratio_investissement), step=0.1)
 c1, c2 = st.columns(2)
 etp = c1.number_input("Emplois agricoles par 100 ha (facultatif, ETP)", min_value=0.0, value=float(p0.etp_pour_100ha or 0.0), step=0.1,
                       help="Ex. ETP du RA 2020 (import Cartostat) rapportés à la SAU du territoire.")
 valide = c2.checkbox("Les paramètres correspondent à la doctrine départementale applicable", value=p0.parametres_valides)
 
-p = C.Parametres(typ, infra, taux, pb_apres if chg else None, coef, duree, ratio, etp or None, valide)
+p = C.Parametres(typ, infra, taux, pb_apres if chg else None, coef, duree, ratio, etp or None, valide,
+                 surface_reversible_ha=rev, poursuite_agricole_l314_36=poursuite)
+if typ == "Agrivoltaïque":
+    st.caption("Régime appliqué : " + ("art. L. 112-1-3 IV du code rural (loi n° 2026-796) : seules les surfaces soustraites sont compensées."
+                                     if poursuite else "poursuite agricole non démontrée : perte appliquée à la zone agrivoltaïque."))
 st.session_state["comp_params"] = p
 res = C.calcul(tab[["groupe", "surface_ha", "pb_eur_ha"]], p)
 if "erreur" in res:
