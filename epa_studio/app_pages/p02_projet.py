@@ -72,7 +72,7 @@ with tab2:
     cartes.finalize(m)
     out = st_folium(m, height=560, use_container_width=True, key="map_emprise",
                     returned_objects=["all_drawings"] if mode == "Dessiner sur la carte" else [])
-    source(f"RPG {CAT.annee_rpg_recente()} (IGN/ASP) ; fonds IGN Géoplateforme.")
+    source(f"RPG {CAT.couche_annuelle('rpg_pac')[1]} (IGN/ASP) ; fonds IGN Géoplateforme.")
     if mode == "Dessiner sur la carte":
         st.caption("Dessinez un ou plusieurs polygones avec les outils à gauche de la carte, puis validez.")
         if st.button("Utiliser le dessin comme emprise", type="primary"):

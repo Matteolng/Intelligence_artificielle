@@ -105,7 +105,7 @@ def rechercher(bbox4326: tuple[float, float, float, float], debut: str, fin: str
     try:
         cli = pystac_client.Client.open(STAC_URL)
         items = list(cli.search(collections=[COLLECTION], bbox=list(bbox4326), datetime=f"{debut}/{fin}",
-                                query={"eo:cloud_cover": {"lt": nuage_max}}, max_items=600).items())
+                                query={"eo:cloud_cover": {"lt": nuage_max}}, max_items=None).items())
     except Exception as e:  # service indisponible ou réseau
         raise DataSourceError(f"Catalogue Sentinel-2 (Earth Search) indisponible : {e}") from e
     zone = box(*bbox4326)
@@ -232,11 +232,14 @@ def analyser(emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFrame, debut: str, fin
     from .territoire import L93
 
     z = zones.to_crs(4326)
-    bbox = tuple(round(v, 5) for v in z.total_bounds)
     eb = emprise.to_crs(L93).total_bounds
     m = max(100.0, 0.15 * max(eb[2] - eb[0], eb[3] - eb[1]))
     anim = gpd.GeoSeries.from_xy([eb[0] - m, eb[2] + m], [eb[1] - m, eb[3] + m], crs=L93).to_crs(4326).total_bounds
     bbox_anim = tuple(round(v, 5) for v in anim)
+    # zone lue = zones analysées + fenêtre d'animation (sans voisinage, l'animation dépasse les zones)
+    zb = z.total_bounds
+    bbox = (min(zb[0], bbox_anim[0]), min(zb[1], bbox_anim[1]), max(zb[2], bbox_anim[2]), max(zb[3], bbox_anim[3]))
+    bbox = tuple(round(v, 5) for v in bbox)
     images = rechercher(bbox, debut, fin)
     if not images:
         raise DataSourceError("Aucune image Sentinel-2 exploitable sur la période.")
@@ -259,9 +262,14 @@ def analyser(emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFrame, debut: str, fin
     lignes = [(r["date"], z_, ind, v, pv) for r in res for z_, ind, v, pv in r["stats"]]
     series = pd.DataFrame(lignes, columns=["date", "zone", "indice", "valeur", "part_valide"])
     series["date"] = pd.to_datetime(series["date"])
-    anim_frames = [(r["date"], r["anim"]) for r in res if r.get("anim") is not None]
+    # animation : images de la projection UTM la plus fréquente (une zone à cheval sur deux fuseaux en a deux)
+    crs_img = {i["id"]: i["crs"] for i in images}
+    avec = [r for r in res if r.get("anim") is not None]
+    crs_anim = pd.Series([crs_img[r["id"]] for r in avec]).mode().iat[0] if avec else None
+    anim_frames = [(r["date"], r["anim"]) for r in avec if crs_img[r["id"]] == crs_anim]
     return {"series": series, "images": len(images), "dates_valides": series["date"].nunique() if not series.empty else 0,
-            "erreurs": sum(1 for r in res if r.get("erreur")), "anim": anim_frames, "bbox_anim": bbox_anim}
+            "erreurs": sum(1 for r in res if r.get("erreur")), "anim": anim_frames, "bbox_anim": bbox_anim,
+            "anim_crs": crs_anim, "anim_bornes": _grille(bbox_anim, crs_anim)[0] if crs_anim else None}
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +277,8 @@ def analyser(emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFrame, debut: str, fin
 # ---------------------------------------------------------------------------
 
 REGLES = {
-    "saison": "début et fin de saison : passage à 50 % de l'amplitude du NDVI de l'année (méthode du seuil d'amplitude, TIMESAT)",
+    "lissage": "NDVI lissé par médiane glissante sur 3 dates avant le calcul des cycles et de la saison (une valeur isolée, souvent un nuage non détecté, est écartée)",
+    "saison": "début et fin de saison : passage à 50 % de l'amplitude du NDVI de l'année civile (méthode du seuil d'amplitude, TIMESAT) ; pour une culture d'hiver, le début correspond à la reprise de végétation de fin d'hiver",
     "hiver": "couverture hivernale : part des dates de novembre à février avec un NDVI ≥ 0,3",
     "sol_nu": "sol nu probable : NDVI < 0,25 et BSI > 0",
     "cycle": "cycle de végétation : un pic de NDVI ≥ 0,5, séparé du pic suivant par un passage sous 0,3",
@@ -280,7 +289,8 @@ REGLES = {
 def cycles(ndvi: pd.Series, haut: float = 0.5, bas: float = 0.3) -> int:
     """Nombre de cycles de végétation dans une série datée (hystérésis : monter au-dessus de `haut`, redescendre sous `bas`)."""
     n, en_haut = 0, False
-    for v in ndvi.dropna():
+    s = ndvi.dropna()
+    for v in s.rolling(3, center=True, min_periods=1).median():
         if not en_haut and v >= haut:
             n, en_haut = n + 1, True
         elif en_haut and v < bas:
@@ -395,7 +405,7 @@ def bilan(series: pd.DataFrame, zones: gpd.GeoDataFrame) -> pd.DataFrame:
         hiver = g[g["date"].dt.month.isin([11, 12, 1, 2])]
         rows.append({
             "Zone": zone, "Type": z["type"] if zone != "emprise" else "emprise entière",
-            "Culture RPG (dernière)": z["culture"] if isinstance(z["culture"], str) else "",
+            "Culture RPG": z["culture"] if isinstance(z["culture"], str) else "",
             "Année": int(an), "Dates sans nuage": int(len(g)),
             "NDVI maximal": round(float(g["NDVI"].max()), 2), "Date du maximum": g.loc[imax, "date"].date().isoformat(),
             "Cycles de végétation": cycles(g["NDVI"]),
@@ -445,28 +455,40 @@ def voisinage(series: pd.DataFrame, zones: gpd.GeoDataFrame, annee: int, n_min: 
         fen = fenetre_saison(med)
         w = nd.loc[fen[0]:fen[1]] if fen else nd
         mx = w.max()
-        pct = 100 * float((mx[vois] < mx[zone]).mean())
-        decal = int((w[zone].idxmax() - w[vois].median(axis=1).idxmax()).days) if w[zone].notna().any() else None
+        mv = mx[vois].dropna()  # voisines sans image exploitable dans la saison : écartées
+        if pd.isna(mx[zone]) or len(mv) < n_min:
+            rows.append({"Parcelle": zone, "Culture": cult, "Parcelles voisines comparées": len(mv),
+                         "NDVI maximal": round(float(mx[zone]), 2) if pd.notna(mx[zone]) else None, "Rang (percentile)": None,
+                         "Lecture": "pas d'image exploitable sur la parcelle pendant la saison" if pd.isna(mx[zone]) else
+                         f"moins de {n_min} parcelles voisines de même culture observées : comparaison non significative"})
+            continue
+        vois = list(mv.index)
+        pct = 100 * float((mv < mx[zone]).mean())
+        # décalage du pic : seulement pour une culture à saison marquée (prairie, luzerne : plusieurs pics équivalents)
+        decal = int((w[zone].idxmax() - w[vois].median(axis=1).idxmax()).days) if fen else None
         lect = ("au-dessus de toutes les parcelles voisines de même culture" if pct >= 100 else
                 "en dessous de toutes les parcelles voisines de même culture" if pct <= 0 else
                 f"au-dessus de {round(pct)} % des parcelles voisines de même culture")
         rows.append({"Parcelle": zone, "Culture": cult, "Parcelles voisines comparées": len(vois),
                      "Saison comparée": f"{fen[0].strftime('%d/%m')} – {fen[1].strftime('%d/%m/%Y')}" if fen else f"année {annee}",
-                     "NDVI maximal": round(float(mx[zone]), 2), "Médiane des voisines": round(float(mx[vois].median()), 2),
+                     "NDVI maximal": round(float(mx[zone]), 2), "Médiane des voisines": round(float(mv.median()), 2),
                      "Rang (percentile)": round(pct), "Décalage du pic (jours)": decal, "Lecture": lect})
     return pd.DataFrame(rows)
 
 
-def phrases(b: pd.DataFrame, v: pd.DataFrame, noms: dict[str, str]) -> list[str]:
-    """Phrases factuelles par gabarit (aucune interprétation agronomique)."""
+def phrases(b: pd.DataFrame, v: pd.DataFrame, noms: dict[str, str], annee_rpg: int | None = None) -> list[str]:
+    """Phrases factuelles par gabarit (aucune interprétation agronomique). `annee_rpg` : millésime des cultures citées."""
     out = []
     if b.empty:
         return out
     last = b["Année"].max()
     for _, r in b[b["Année"] == last].iterrows():
         nom = noms.get(r["Zone"], r["Zone"])
-        c = r["Culture RPG (dernière)"]
-        cult = f" ({str(c).lower()} déclaré au RPG)" if isinstance(c, str) and c else ""
+        c = r.get("Culture RPG", r.get("Culture RPG (dernière)"))  # ancien nom dans les projets enregistrés
+        rpg = f"RPG {annee_rpg}" if annee_rpg else "RPG"
+        cult = ("" if not (isinstance(c, str) and c) else
+                f" (culture déclarée au {rpg})" if str(c).lower() in nom.lower() else  # culture déjà dans le nom
+                f" ({str(c).lower()}, culture déclarée au {rpg})")
         txt = (f"{nom}{cult} : en {last}, le NDVI atteint {str(r['NDVI maximal']).replace('.', ',')} le "
                f"{pd.Timestamp(r['Date du maximum']).strftime('%d/%m/%Y')}, avec {r['Cycles de végétation']} cycle(s) de végétation "
                f"sur {r['Dates sans nuage']} dates sans nuage")

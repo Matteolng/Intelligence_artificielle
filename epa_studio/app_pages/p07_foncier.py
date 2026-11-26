@@ -1,3 +1,5 @@
+from datetime import date
+
 import plotly.express as px
 import streamlit as st
 
@@ -53,7 +55,7 @@ elif bar_df is None:
 
 st.markdown("### Transactions observées (DVF)")
 c1, c2, c3 = st.columns(3)
-annee_min = c1.number_input("Mutations depuis l'année", min_value=2014, max_value=2026, value=2014, step=1)
+annee_min = c1.number_input("Mutations depuis l'année", min_value=2014, max_value=date.today().year, value=2014, step=1)
 types = c2.multiselect("Types de biens", list(DVF_TYPES_AGRICOLES), default=list(DVF_TYPES_AGRICOLES), format_func=lambda c: DVF_TYPES_AGRICOLES[c], placeholder="Choisir")
 c3.write("")
 c3.write("")

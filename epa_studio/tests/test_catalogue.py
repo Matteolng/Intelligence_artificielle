@@ -38,3 +38,31 @@ def test_secours_si_catalogue_indisponible(monkeypatch):
     assert C.annee_de_couche("RPG.LATEST:parcelles_graphiques") == next(iter(C.RPG_LAYERS))[:4]
 
     C._rpg_ou_defaut.cache_clear()
+
+
+def test_fichier_annexe_ignore():
+    meta = {"resources": [{"url": "https://x/2025-10-09-communes-aires-ao.csv", "title": "COMAGRI-Communes_Aires_AO.csv",
+                           "format": "csv", "last_modified": "2025-10-09"},
+                          {"url": "https://x/dictionnaire.csv", "title": "Dictionnaire des variables", "format": "csv",
+                           "last_modified": "2026-01-01"}]}
+    assert C.choisir_ressource(meta, r"communes.?aires.?ao")[0].endswith("communes-aires-ao.csv")
+
+
+def test_repli_si_nouvelle_version_illisible(monkeypatch):
+    C._REPLI.clear()
+    monkeypatch.setattr(C, "_derniere", lambda cle: ("https://x/nouveau.csv", "2027-01-05"))
+
+    def lire(url):
+        if url == "https://x/nouveau.csv":
+            raise KeyError("colonne renommée")
+        return "version connue"
+    assert C.lire_avec_repli(("otex",), lire) == "version connue"
+    assert C.ressource("otex") == (C.JEUX["otex"][1], "")  # plus de date de version citée
+    C._REPLI.clear()
+    assert C.ressource("otex") == ("https://x/nouveau.csv", "2027-01-05")
+
+
+def test_annee_rpg_pac_wms_lue_dans_le_titre():
+    caps = ("<Layer><Name>LANDUSE.AGRICULTURE.LATEST</Name><Title>Registre parcellaire graphique (RPG) édition 2026</Title>"
+            "</Layer><Layer><Name>LANDUSE.AGRICULTURE2024</Name><Title>Registre parcellaire graphique (RPG) 2024</Title></Layer>")
+    assert C.lire_wms_annuelles(caps)["rpg_pac"] == ("LANDUSE.AGRICULTURE.LATEST", 2026)

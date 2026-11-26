@@ -104,3 +104,56 @@ def test_voisinage_dans_la_saison_de_la_culture():
                           "culture": ["Blé"] * 11}, geometry=[box(0, 0, 1, 1)] * 11, crs=4326)
     r = TD.voisinage(s, z, 2025).iloc[0]
     assert r["NDVI maximal"] == 0.85 and abs(r["Décalage du pic (jours)"]) < 7  # le couvert de janvier est hors saison
+
+
+def test_cycles_ignore_valeur_isolee():
+    d = pd.date_range("2025-03-01", periods=7, freq="10D")
+    assert TD.cycles(pd.Series([0.2, 0.7, 0.8, 0.1, 0.8, 0.7, 0.2], index=d)) == 1  # nuage résiduel isolé
+
+
+def _zones_voisinage(n):
+    rows = [{"zone": "site:1", "type": "site", "culture": "Blé", "geometry": box(0, 0, 1, 1)}]
+    rows += [{"zone": f"voisin:{i}", "type": "voisin", "culture": "Blé", "geometry": box(0, 0, 1, 1)} for i in range(n)]
+    return gpd.GeoDataFrame(rows, geometry="geometry", crs=4326)
+
+
+def test_voisinage_ignore_voisines_sans_donnee():
+    dates = pd.date_range("2025-03-01", periods=12, freq="15D")
+    prof = [0.2, 0.3, 0.5, 0.7, 0.85, 0.9, 0.8, 0.5, 0.3, 0.2, 0.2, 0.2]
+    rows = [(d, "site:1", "NDVI", v + 0.05) for d, v in zip(dates, prof)]
+    for i in range(10):
+        rows += [(d, f"voisin:{i}", "NDVI", v - 0.01 * i) for d, v in zip(dates, prof)]
+    for i in range(10, 14):  # voisines observées seulement hors saison
+        rows += [(dates[-1], f"voisin:{i}", "NDVI", 0.2)]
+    s = pd.DataFrame(rows, columns=["date", "zone", "indice", "valeur"])
+    v = TD.voisinage(s, _zones_voisinage(14), 2025)
+    assert v.loc[0, "Parcelles voisines comparées"] == 10 and v.loc[0, "Rang (percentile)"] == 100
+
+
+def test_voisinage_parcelle_sans_image_en_saison():
+    dates = pd.date_range("2025-03-01", periods=12, freq="15D")
+    prof = [0.2, 0.3, 0.5, 0.7, 0.85, 0.9, 0.8, 0.5, 0.3, 0.2, 0.2, 0.2]
+    rows = [(dates[-1], "site:1", "NDVI", 0.2)]
+    for i in range(10):
+        rows += [(d, f"voisin:{i}", "NDVI", v) for d, v in zip(dates, prof)]
+    s = pd.DataFrame(rows, columns=["date", "zone", "indice", "valeur"])
+    v = TD.voisinage(s, _zones_voisinage(10), 2025)
+    assert pd.isna(v.loc[0, "Rang (percentile)"]) and "pas d'image" in v.loc[0, "Lecture"]
+
+
+def test_phrase_date_le_rpg():
+    b = pd.DataFrame([{"Zone": "site:1", "Culture RPG": "Blé tendre d'hiver", "Année": 2026, "NDVI maximal": 0.9,
+                       "Date du maximum": "2026-04-20", "Cycles de végétation": 1, "Dates sans nuage": 20,
+                       "Sol nu probable (% des dates)": 0, "Mois de sol nu": ""}])
+    assert "culture déclarée au RPG 2025" in TD.phrases(b, pd.DataFrame(), {"site:1": "Parcelle 1"}, 2025)[0]
+
+
+def test_pas_de_decalage_de_pic_sans_saison_marquee():
+    dates = pd.date_range("2025-01-10", periods=24, freq="15D")
+    rng = np.random.default_rng(0)
+    rows = [(d, "site:1", "NDVI", 0.8 + 0.05 * rng.random()) for d in dates]
+    for i in range(10):
+        rows += [(d, f"voisin:{i}", "NDVI", 0.78 + 0.08 * rng.random()) for d in dates]
+    s = pd.DataFrame(rows, columns=["date", "zone", "indice", "valeur"])
+    v = TD.voisinage(s, _zones_voisinage(10), 2025)
+    assert v.loc[0, "Saison comparée"] == "année 2025" and pd.isna(v.loc[0, "Décalage du pic (jours)"])

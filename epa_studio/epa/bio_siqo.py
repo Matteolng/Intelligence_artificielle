@@ -83,9 +83,9 @@ def _read_inao(url: str) -> pd.DataFrame:
 
 def table_inao() -> pd.DataFrame:
     """Table commune (CI) × aire géographique (IDA) × signe, toutes AOC/AOP/IGP/IG (dernières versions data.gouv.fr)."""
-    from .catalogue import ressource
+    from .catalogue import lire_avec_repli
 
-    return _table_inao(ressource("inao_ao")[0], ressource("inao_ig")[0], ressource("inao_produits")[0])
+    return lire_avec_repli(("inao_ao", "inao_ig", "inao_produits"), _table_inao)
 
 
 @disk_cache("inao")

@@ -30,6 +30,6 @@ def _otex(url: str) -> pd.DataFrame:
 
 def otex_communes() -> pd.DataFrame:
     """Dernière version publiée sur data.gouv.fr (URL relue par le catalogue), mise en cache par URL."""
-    from .catalogue import ressource
+    from .catalogue import lire_avec_repli
 
-    return _otex(ressource("otex")[0])
+    return lire_avec_repli(("otex",), _otex)

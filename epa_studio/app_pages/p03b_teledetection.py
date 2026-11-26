@@ -81,11 +81,11 @@ if (lancer or (st.session_state.get("mode_demo") and res is None)) and annees:
     b_ = TD.bilan(out["series"], zones)
     if not b_.empty:
         b_.insert(0, "Zone (nom)", b_["Zone"].map(noms).fillna(b_["Zone"]))
-    an_ref = CAT.annee_rpg_recente()  # cultures des parcelles = RPG le plus récent : comparaisons sur cette année-là
+    an_ref = int(CAT.annee_de_couche(lay) or CAT.annee_rpg_recente())  # millésime des cultures : comparaisons sur cette année
     v_ = TD.voisinage(out["series"], zones, an_ref) if rayon else pd.DataFrame()
     if not v_.empty:
         v_.insert(0, "Parcelle (nom)", v_["Parcelle"].map(noms).fillna(v_["Parcelle"]))
-    gif = figures.animation_ndvi(out["anim"], emprise, zs, out["bbox_anim"])
+    gif = figures.animation_ndvi(out["anim"], emprise, zs, out["bbox_anim"], crs=out.get("anim_crs"), bornes=out.get("anim_bornes"))
     cults = zs[zs["zone"].isin(affichees) & zs["culture"].notna()]
     c_princ = cults.groupby("culture")["ha"].sum().idxmax() if not cults.empty else None
     f_ndvi = TD.fourchette(out["series"], zones, c_princ, annee=an_ref) if c_princ and rayon else None
@@ -183,7 +183,7 @@ with st.expander("Lire ces courbes sans être spécialiste"):
         "- **Les dates clés** (début, pic, fin de saison) sont calculées quand la courbe franchit la moitié de son amplitude annuelle "
         "(méthode du seuil d'amplitude, logiciel TIMESAT).")
 
-_toutes = TD.phrases(res["bilan"], res["voisinage"], noms)
+_toutes = TD.phrases(res["bilan"], res["voisinage"], noms, res["annee_ref"])
 _vis = [noms.get(k, k) for k in choix] + ["Emprise entière"]
 _haut = sorted([p for p in _toutes if any(p.startswith(n) for n in _vis)])
 _reste = sorted([p for p in _toutes if p not in _haut])
@@ -199,7 +199,8 @@ if c0:
     for k in [a for a in choix if a.startswith("site:") and z.set_index("zone").loc[a, "culture"] == c0]:
         pos = TD.position_fourchette(S[(S["zone"] == k) & (S["indice"] == "NDVI")][["date", "valeur"]], f_nd, fen)
         if pos:
-            periode = f"pendant la saison du {c0.lower()} ({fen[0].strftime('%d/%m')} – {fen[1].strftime('%d/%m/%Y')})" if fen else f"en {res['annee_ref']}"
+            periode = (f"pendant la saison de la culture ({c0.lower()}, {fen[0].strftime('%d/%m')} – {fen[1].strftime('%d/%m/%Y')})"
+                       if fen else f"en {res['annee_ref']}")
             txt = (f"{noms.get(k, k)} : {periode}, {pos['dedans_pct']} % des {pos['n']} dates dans la fourchette des "
                    f"parcelles voisines")
             if pos["sous"]:

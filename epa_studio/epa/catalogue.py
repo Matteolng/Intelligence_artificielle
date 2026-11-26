@@ -9,18 +9,22 @@ connues lors du développement (epa.config) : elle continue de fonctionner, sans
 from __future__ import annotations
 
 import re
+import time
 
 from .config import (GPF_WFS, GPF_WMS_RASTER, INAO_AIRES_PRODUITS_CSV, INAO_COMMUNES_AO_CSV, INAO_COMMUNES_IG_CSV,
                      OTEX_COMMUNES_CSV, RPG_LAYERS, WMS_LAYERS)
 from .http import DataSourceError, disk_cache, get, get_json, memo
 
 DATAGOUV = "https://www.data.gouv.fr/api/1/datasets"
+# (jeu de données, URL connue en secours, motif du nom du fichier attendu : un fichier annexe ajouté au jeu est ignoré)
 JEUX = {
-    "otex": ("specialisation-territoriale-de-la-production-agricole-par-commune-en-2020-otex-en-12-postes", OTEX_COMMUNES_CSV),
-    "inao_ao": ("aires-geographiques-des-aoc-aop", INAO_COMMUNES_AO_CSV),
-    "inao_ig": ("aire-geographique-des-igp-et-des-ig", INAO_COMMUNES_IG_CSV),
-    "inao_produits": ("aires-et-produits-aoc-aop-et-igp", INAO_AIRES_PRODUITS_CSV),
+    "otex": ("specialisation-territoriale-de-la-production-agricole-par-commune-en-2020-otex-en-12-postes", OTEX_COMMUNES_CSV,
+             r"otex"),
+    "inao_ao": ("aires-geographiques-des-aoc-aop", INAO_COMMUNES_AO_CSV, r"communes.?aires.?ao"),
+    "inao_ig": ("aire-geographique-des-igp-et-des-ig", INAO_COMMUNES_IG_CSV, r"communes.?aires.?ig"),
+    "inao_produits": ("aires-et-produits-aoc-aop-et-igp", INAO_AIRES_PRODUITS_CSV, r"aires.?produits"),
 }
+_REPLI: dict[str, float] = {}  # fichier → instant où sa dernière version n'a pas pu être lue (repli pendant 1 h)
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +96,7 @@ MOTIFS_WMS = {
     "rpg_pp": r"IGNF_RPG_PRAIRIES-PERMANENTES_(\d{4})",
     "clc": r"LANDCOVER\.CLC(\d{2})_FR",
 }
-DEFAUTS_WMS = {"rpg_bio": ("IGNF_RPG_PARCELLES-BIO_2025", 2025), "rpg_pp": ("IGNF_RPG_PRAIRIES-PERMANENTES_2025", 2025),
+DEFAUTS_WMS = {"rpg_pac": ("LANDUSE.AGRICULTURE.LATEST", 2025), "rpg_bio": ("IGNF_RPG_PARCELLES-BIO_2025", 2025), "rpg_pp": ("IGNF_RPG_PRAIRIES-PERMANENTES_2025", 2025),
                "clc": ("LANDCOVER.CLC18_FR", 2018)}
 
 
@@ -110,6 +114,10 @@ def lire_wms_annuelles(caps: str) -> dict[str, tuple[str, int]]:
                     best = (n, a)
         if best:
             out[cle] = best
+    # RPG PAC : couche « LATEST », dont le titre donne l'édition (« Registre parcellaire graphique (RPG) édition 2025 »)
+    m = re.search(r"<Name>LANDUSE\.AGRICULTURE\.LATEST</Name>\s*<Title>[^<]*?((?:19|20)\d{2})[^<]*</Title>", caps)
+    if m:
+        out["rpg_pac"] = ("LANDUSE.AGRICULTURE.LATEST", int(m.group(1)))
     return out
 
 
@@ -142,7 +150,7 @@ def couches_wms() -> dict[str, dict]:
     for nom, cfg in WMS_LAYERS.items():
         cfg = dict(cfg)
         if nom.startswith("RPG") and "parcelles PAC" in nom:
-            nom, cfg["annee"] = NOM_RPG_PAC, annee_rpg_recente()
+            (cfg["layer"], cfg["annee"]), nom = couche_annuelle("rpg_pac"), NOM_RPG_PAC
         elif nom.startswith("RPG") and "bio" in nom:
             (cfg["layer"], cfg["annee"]), nom = couche_annuelle("rpg_bio"), NOM_RPG_BIO
         elif nom.startswith("RPG") and "prairies" in nom:
@@ -157,9 +165,12 @@ def couches_wms() -> dict[str, dict]:
 # data.gouv.fr
 # ---------------------------------------------------------------------------
 
-def choisir_ressource(meta: dict, motif: str = r"\.csv$") -> tuple[str, str] | None:
-    """Ressource CSV la plus récemment modifiée d'un jeu de données data.gouv.fr : (url, date)."""
-    res = [r for r in meta.get("resources", []) if re.search(motif, r.get("url", ""), re.I) or (r.get("format") or "").lower() == "csv"]
+def choisir_ressource(meta: dict, nom: str = "") -> tuple[str, str] | None:
+    """Ressource CSV la plus récemment modifiée d'un jeu de données data.gouv.fr dont le titre ou l'URL contient `nom`
+    (expression régulière) : (url, date)."""
+    res = [r for r in meta.get("resources", [])
+           if (re.search(r"\.csv$", r.get("url", ""), re.I) or (r.get("format") or "").lower() == "csv")
+           and re.search(nom, f"{r.get('title') or ''} {r.get('url', '')}", re.I)]
     if not res:
         return None
     r = max(res, key=lambda r: r.get("last_modified") or "")
@@ -172,13 +183,32 @@ def _meta_datagouv(slug: str) -> dict:
 
 
 @memo(3600)
-def ressource(cle: str) -> tuple[str, str]:
-    """(url, date de mise à jour) de la dernière ressource ; URL connue en secours."""
-    slug, defaut = JEUX[cle]
+def _derniere(cle: str) -> tuple[str, str]:
+    slug, defaut, nom = JEUX[cle]
     try:
-        r = choisir_ressource(_meta_datagouv(slug))
+        r = choisir_ressource(_meta_datagouv(slug), nom)
         if r:
             return r
     except Exception:
         pass
     return defaut, ""
+
+
+def ressource(cle: str) -> tuple[str, str]:
+    """(url, date de mise à jour) de la dernière ressource ; URL connue (sans date) en secours."""
+    return (JEUX[cle][1], "") if time.monotonic() - _REPLI.get(cle, -1e9) < 3600 else _derniere(cle)
+
+
+def lire_avec_repli(cles: tuple[str, ...], lire):
+    """Lit la dernière version des fichiers `cles` avec `lire(*urls)` ; si elle est illisible (structure changée par le
+    producteur), relit la version connue et le signale à la bibliographie (la date de version n'est alors plus citée)."""
+    urls = tuple(ressource(c)[0] for c in cles)
+    connues = tuple(JEUX[c][1] for c in cles)
+    try:
+        return lire(*urls)
+    except Exception:
+        if urls == connues:
+            raise
+        out = lire(*connues)  # lève si la version connue est elle aussi illisible
+        _REPLI.update({c: time.monotonic() for c in cles})
+        return out

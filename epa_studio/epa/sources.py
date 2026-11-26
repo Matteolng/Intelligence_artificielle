@@ -76,7 +76,10 @@ def get(cle: str) -> Source:
         except Exception:
             d = ""
         s = CATALOGUE[cle]
-        return replace(s, titre=f"{s.titre}, version du {d[8:10]}/{d[5:7]}/{d[:4]}") if d else s
+        if not d:
+            return s
+        # INAO : le millésime est celui de la version ; OTEX : il reste celui du recensement (2020)
+        return replace(s, titre=f"{s.titre}, version du {d[8:10]}/{d[5:7]}/{d[:4]}", millesime=d[:4] if cle == "inao" else s.millesime)
     if cle.startswith("rpg:"):
         return _rpg(cle.split(":", 1)[1])
     if cle.startswith("clc:"):

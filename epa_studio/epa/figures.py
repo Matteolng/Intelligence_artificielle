@@ -339,8 +339,11 @@ def _rampe_ndvi():
 
 
 def animation_ndvi(frames: list, emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFrame | None, bbox4326, max_images: int = 40,
-                   largeur_min: int = 640) -> bytes | None:
-    """GIF animé du NDVI de l'emprise, une image par date sans nuage (nuages en gris), contours des parcelles."""
+                   largeur_min: int = 640, crs=None, bornes=None) -> bytes | None:
+    """GIF animé du NDVI de l'emprise, une image par date sans nuage (nuages en gris), contours des parcelles.
+
+    `crs` et `bornes` : projection et emprise exactes de la grille des images ; les contours sont alors tracés dans
+    cette projection (sinon, approximation en longitude/latitude sur `bbox4326`)."""
     from PIL import ImageDraw, ImageFont
 
     frames = [(d, a) for d, a in frames if a is not None and np.isfinite(np.asarray(a, dtype="float32")).mean() > 0.3]
@@ -353,14 +356,16 @@ def animation_ndvi(frames: list, emprise: gpd.GeoDataFrame, zones: gpd.GeoDataFr
     h, w = np.asarray(frames[0][1]).shape
     echelle = max(2, int(np.ceil(largeur_min / max(w, 1))))
     W, H = w * echelle, h * echelle
-    minx, miny, maxx, maxy = bbox4326
+    proj = crs if crs is not None and bornes is not None else 4326
+    minx, miny, maxx, maxy = bornes if proj != 4326 else bbox4326
 
     def px(x, y):
         return ((x - minx) / (maxx - minx) * W, (maxy - y) / (maxy - miny) * H)
 
     lignes = []
-    for g, coul, ep in ([(g, (255, 255, 255), 1) for g in (zones.to_crs(4326).geometry if zones is not None else [])]
-                        + [(g, (31, 42, 34), 3) for g in emprise.to_crs(4326).geometry]):
+    for g, coul, ep in ([(g, (255, 255, 255), 1) for g in (zones.to_crs(proj).geometry if zones is not None else [])]
+                        + [(g, (31, 42, 34), 5) for g in emprise.to_crs(proj).geometry]
+                        + [(g, (244, 236, 223), 2) for g in emprise.to_crs(proj).geometry]):  # liseré crème sur halo sombre
         for poly in getattr(g, "geoms", [g]):
             if poly.geom_type == "Polygon":
                 lignes.append(([px(x, y) for x, y in poly.exterior.coords], coul, ep))
